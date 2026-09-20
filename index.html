@@ -1,107 +1,493 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mahid Stock Scanner</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #0b1220;
-            color: white;
-        }
+<title>Mahid Stock Scanner</title>
 
-        header {
-            padding: 20px;
-            background: #111c32;
-            text-align: center;
-        }
+<style>
 
-        h1 {
-            margin: 0;
-            color: #00e5ff;
-        }
+*{
+    box-sizing:border-box;
+}
 
-        .container {
-            padding: 20px;
-            max-width: 1100px;
-            margin: auto;
-        }
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#08111f;
+    color:#ffffff;
+}
 
-        .card {
-            background: #141f35;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
+header{
+    background:#101c30;
+    padding:20px;
+    border-bottom:1px solid #263752;
+}
 
-        button {
-            background: #00bcd4;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
+.logo{
+    font-size:26px;
+    font-weight:bold;
+    color:#00d9ff;
+}
 
-        button:hover {
-            background: #0097a7;
-        }
+.subtitle{
+    color:#9aa8bd;
+    margin-top:6px;
+}
 
-        .status {
-            margin-top: 15px;
-            color: #aaa;
-        }
-    </style>
+.container{
+    max-width:1200px;
+    margin:auto;
+    padding:20px;
+}
+
+.controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:20px;
+}
+
+select,
+input,
+button{
+    padding:12px;
+    border-radius:8px;
+    border:1px solid #31415d;
+    background:#111d31;
+    color:white;
+    font-size:15px;
+}
+
+button{
+    background:#0099cc;
+    border:none;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+button:hover{
+    background:#00b8ee;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.card{
+    background:#111d31;
+    border:1px solid #263752;
+    border-radius:12px;
+    padding:18px;
+}
+
+.card-title{
+    color:#9aa8bd;
+    font-size:14px;
+}
+
+.card-value{
+    font-size:25px;
+    font-weight:bold;
+    margin-top:8px;
+}
+
+.green{
+    color:#22d69a;
+}
+
+.red{
+    color:#ff6577;
+}
+
+.yellow{
+    color:#ffd166;
+}
+
+.blue{
+    color:#00d9ff;
+}
+
+.table-box{
+    background:#111d31;
+    border:1px solid #263752;
+    border-radius:12px;
+    overflow:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:800px;
+}
+
+th,
+td{
+    padding:14px;
+    text-align:left;
+    border-bottom:1px solid #263752;
+}
+
+th{
+    color:#9aa8bd;
+    font-size:13px;
+}
+
+.badge{
+    padding:6px 10px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.support{
+    background:#123c35;
+    color:#35e0ae;
+}
+
+.resistance{
+    background:#45232b;
+    color:#ff7181;
+}
+
+.discount{
+    background:#403613;
+    color:#ffd166;
+}
+
+.neutral{
+    background:#26344a;
+    color:#b9c5d6;
+}
+
+.status{
+    margin:15px 0;
+    color:#9aa8bd;
+}
+
+@media(max-width:800px){
+
+    .cards{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+}
+
+@media(max-width:500px){
+
+    .cards{
+        grid-template-columns:1fr;
+    }
+
+    .container{
+        padding:12px;
+    }
+
+}
+
+</style>
 </head>
 
 <body>
 
 <header>
-    <h1>📊 Mahid Stock Scanner</h1>
-    <p>NSE & BSE Stock Analysis</p>
+
+<div class="logo">
+📊 Mahid Stock Scanner
+</div>
+
+<div class="subtitle">
+NSE & BSE • Support • Resistance • Discount Zone
+</div>
+
 </header>
+
 
 <div class="container">
 
-    <div class="card">
-        <h2>🔍 Stock Scanner</h2>
-        <p>Strong Support • Resistance • Discount Zone</p>
 
-        <button onclick="scanStocks()">
-            Scan Stocks
-        </button>
+<div class="controls">
 
-        <div class="status" id="status">
-            Scanner ready...
-        </div>
-    </div>
+<select id="market">
 
-    <div class="card">
-        <h2>📈 Market Analysis</h2>
-        <p id="result">
-            अभी कोई scan नहीं हुआ।
-        </p>
-    </div>
+<option>NSE</option>
+<option>BSE</option>
+
+</select>
+
+
+<select id="timeframe">
+
+<option>5 Minute</option>
+<option>15 Minute</option>
+<option>1 Hour</option>
+<option>1 Day</option>
+
+</select>
+
+
+<select id="zone">
+
+<option>All Zones</option>
+<option>Strong Support</option>
+<option>Strong Resistance</option>
+<option>Discount Zone</option>
+
+</select>
+
+
+<input
+type="text"
+id="search"
+placeholder="Search stock..."
+>
+
+
+<button onclick="scanStocks()">
+🔍 Scan Stocks
+</button>
 
 </div>
 
-<script>
-function scanStocks() {
-    document.getElementById("status").innerText =
-        "🔄 Stock scanning शुरू हो रही है...";
 
-    setTimeout(function() {
-        document.getElementById("result").innerText =
-            "✅ Scanner तैयार है। अगला चरण NSE/BSE data connection होगा.";
+<div class="cards">
+
+<div class="card">
+
+<div class="card-title">
+Strong Support
+</div>
+
+<div class="card-value green">
+12
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="card-title">
+Strong Resistance
+</div>
+
+<div class="card-value red">
+8
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="card-title">
+Discount Zone
+</div>
+
+<div class="card-value yellow">
+15
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="card-title">
+Stocks Scanned
+</div>
+
+<div class="card-value blue">
+125
+</div>
+
+</div>
+
+</div>
+
+
+<div class="status" id="status">
+
+Scanner ready — Data connection pending.
+
+</div>
+
+
+<div class="table-box">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Stock</th>
+<th>Price</th>
+<th>Zone</th>
+<th>Support</th>
+<th>Resistance</th>
+<th>Volume</th>
+<th>Signal</th>
+
+</tr>
+
+</thead>
+
+
+<tbody id="stockTable">
+
+<tr>
+
+<td>RELIANCE</td>
+<td>—</td>
+
+<td>
+<span class="badge support">
+Strong Support
+</span>
+</td>
+
+<td>—</td>
+<td>—</td>
+
+<td>High</td>
+
+<td class="green">
+Watch
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>INFY</td>
+<td>—</td>
+
+<td>
+<span class="badge resistance">
+Strong Resistance
+</span>
+</td>
+
+<td>—</td>
+<td>—</td>
+
+<td>High</td>
+
+<td class="red">
+Watch
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>HDFCBANK</td>
+<td>—</td>
+
+<td>
+<span class="badge discount">
+Discount Zone
+</span>
+</td>
+
+<td>—</td>
+<td>—</td>
+
+<td>High</td>
+
+<td class="yellow">
+Watch
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>TCS</td>
+<td>—</td>
+
+<td>
+<span class="badge neutral">
+Neutral
+</span>
+</td>
+
+<td>—</td>
+<td>—</td>
+
+<td>Normal</td>
+
+<td>
+No Signal
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<script>
+
+function scanStocks(){
+
+    const market =
+        document.getElementById("market").value;
+
+    const timeframe =
+        document.getElementById("timeframe").value;
+
+    document.getElementById("status").innerText =
+        "🔄 " + market +
+        " " + timeframe +
+        " scanner running...";
+
+    setTimeout(function(){
 
         document.getElementById("status").innerText =
-            "✅ Scan complete";
-    }, 1000);
+            "✅ Scanner ready. Real market data connection will be added next.";
+
+    },1000);
+
 }
+
+
+document.getElementById("search")
+.addEventListener("input", function(){
+
+    const value =
+        this.value.toUpperCase();
+
+    const rows =
+        document.querySelectorAll("#stockTable tr");
+
+    rows.forEach(function(row){
+
+        const stock =
+            row.cells[0].innerText.toUpperCase();
+
+        row.style.display =
+            stock.includes(value)
+            ? ""
+            : "none";
+
+    });
+
+});
+
 </script>
 
 </body>
