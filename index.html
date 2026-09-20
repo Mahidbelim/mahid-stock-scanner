@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mahid Stock Scanner</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0b1220;
+            color: white;
+        }
+
+        header {
+            padding: 20px;
+            background: #111c32;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            color: #00e5ff;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .card {
+            background: #141f35;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #00bcd4;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0097a7;
+        }
+
+        .status {
+            margin-top: 15px;
+            color: #aaa;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>📊 Mahid Stock Scanner</h1>
+    <p>NSE & BSE Stock Analysis</p>
+</header>
+
+<div class="container">
+
+    <div class="card">
+        <h2>🔍 Stock Scanner</h2>
+        <p>Strong Support • Resistance • Discount Zone</p>
+
+        <button onclick="scanStocks()">
+            Scan Stocks
+        </button>
+
+        <div class="status" id="status">
+            Scanner ready...
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📈 Market Analysis</h2>
+        <p id="result">
+            अभी कोई scan नहीं हुआ।
+        </p>
+    </div>
+
+</div>
+
+<script>
+function scanStocks() {
+    document.getElementById("status").innerText =
+        "🔄 Stock scanning शुरू हो रही है...";
+
+    setTimeout(function() {
+        document.getElementById("result").innerText =
+            "✅ Scanner तैयार है। अगला चरण NSE/BSE data connection होगा.";
+
+        document.getElementById("status").innerText =
+            "✅ Scan complete";
+    }, 1000);
+}
+</script>
+
+</body>
+</html>
