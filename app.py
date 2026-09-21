@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+import yfinance as yf
 
 app = Flask(__name__)
 
@@ -6,21 +7,26 @@ app = Flask(__name__)
 def home():
     return jsonify({
         "status": "success",
-        "message": "Mahid Stock Scanner backend is running"
-    })
-
-@app.route("/api/health")
-def health():
-    return jsonify({
-        "status": "ok"
+        "message": "Mahid Scanner is running"
     })
 
 @app.route("/api/stock/<symbol>")
 def stock(symbol):
-    return jsonify({
-        "symbol": symbol.upper(),
-        "message": "Stock data connection ready"
-    })
+    try:
+        data = yf.Ticker(symbol + ".NS")
+        price = data.fast_info["last_price"]
+
+        return jsonify({
+            "status": "success",
+            "symbol": symbol.upper(),
+            "price": price
+        })
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        })
 
 if __name__ == "__main__":
     app.run()
