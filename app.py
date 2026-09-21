@@ -15,5 +15,12 @@ def health():
         "status": "ok"
     })
 
+@app.route("/api/stock/<symbol>")
+def stock(symbol):
+    return jsonify({
+        "symbol": symbol.upper(),
+        "message": "Stock data connection ready"
+    })
+
 if __name__ == "__main__":
     app.run()
