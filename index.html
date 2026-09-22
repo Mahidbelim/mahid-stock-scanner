@@ -501,18 +501,39 @@ async function scanStocks(){
                     document.createElement("tr");
 
                 row.innerHTML = `
+<td>
+    <span class="badge ${
+        data.zone === "Discount Zone"
+        ? "discount"
+        : data.zone === "Premium Zone"
+        ? "resistance"
+        : "neutral"
+    }">
+        ${data.zone ?? "—"}
+    </span>
+</td>
 
-                    <td>
-                        ${data.symbol}
-                    </td>
+<td>
+    ₹${data.support ?? "—"}
+</td>
 
-                    <td>
-                        ₹${data.price ?? "—"}
-                    </td>
+<td>
+    ₹${data.resistance ?? "—"}
+</td>
 
-                    <td>
-                        <span class="badge neutral">
-                            Live Data
+<td>
+    ${data.volume ?? "—"}
+</td>
+
+<td class="${
+    data.signal === "BUY AREA"
+    ? "green"
+    : data.signal === "SELL AREA"
+    ? "red"
+    : "yellow"
+}">
+    ${data.signal ?? "WAIT"}
+</td>
                         </span>
                     </td>
 
