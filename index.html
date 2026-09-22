@@ -664,4 +664,61 @@ document.getElementById("search").addEventListener("input", function () {
     });
 
 });
+<script>
+async function scanStocks() {
+
+    const status = document.getElementById("status");
+    const table = document.getElementById("stockTable");
+
+    status.innerText = "🔄 Market data loading...";
+    table.innerHTML = "";
+
+    const stocks = ["RELIANCE", "INFY", "HDFCBANK", "TCS"];
+
+    for (const symbol of stocks) {
+        try {
+            const response = await fetch(
+                "https://mahid-stock-scanner-api.onrender.com/api/stock/" + symbol
+            );
+
+            const data = await response.json();
+
+            if (data.status === "success") {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${data.symbol}</td>
+                    <td>₹${data.price ?? "—"}</td>
+                    <td>
+                        <span class="badge neutral">Live Data</span>
+                    </td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>${data.volume ?? "—"}</td>
+                    <td class="green">Live</td>
+                `;
+
+                table.appendChild(row);
+            }
+
+        } catch (error) {
+            console.log("Error:", symbol, error);
+        }
+    }
+
+    status.innerText = "✅ Market data loaded.";
+}
+
+document.getElementById("search").addEventListener("input", function () {
+
+    const value = this.value.toUpperCase();
+
+    document.querySelectorAll("#stockTable tr").forEach(function (row) {
+
+        const stock = row.cells[0].innerText.toUpperCase();
+
+        row.style.display = stock.includes(value) ? "" : "none";
+    });
+
+});
 </script>
