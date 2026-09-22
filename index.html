@@ -508,20 +508,7 @@ async function scanStocks(){
         : data.zone === "Premium Zone"
         ? "resistance"
         : "neutral"
-    }">
-        ${data.zone ?? "—"}
-    </span>
-</td>
-
-<td>
-    ₹${data.support ?? "—"}
-</td>
-
-<td>
-    ₹${data.resistance ?? "—"}
-</td>
-
-<td>
+  <td>
     ${data.volume ?? "—"}
 </td>
 
@@ -533,6 +520,19 @@ async function scanStocks(){
     : "yellow"
 }">
     ${data.signal ?? "WAIT"}
+</td>
+
+<td>
+    ₹${data.price ?? "—"}
+</td>
+
+<td>
+    ₹${data.target ?? "—"}
+</td>
+
+<td>
+    ₹${data.stoploss ?? "—"}
+</td>
 </td>
                         </span>
                     </td>
