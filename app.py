@@ -6,10 +6,6 @@ app = Flask(__name__)
 CORS(app)
 
 
-# -------------------------------------------------
-# HOME
-# -------------------------------------------------
-
 @app.route("/")
 def home():
     return jsonify({
@@ -18,10 +14,6 @@ def home():
         "data_api": "/api/stock/RELIANCE"
     })
 
-
-# -------------------------------------------------
-# STOCK API
-# -------------------------------------------------
 
 @app.route("/api/stock/<symbol>")
 def stock(symbol):
@@ -33,9 +25,9 @@ def stock(symbol):
         ticker = yf.Ticker(symbol + ".NS")
 
 
-        # =================================================
+        # ==========================================
         # 5 MINUTE DATA
-        # =================================================
+        # ==========================================
 
         data_5m = ticker.history(
             period="5d",
@@ -50,8 +42,6 @@ def stock(symbol):
                 "message": "5 minute data not available"
             })
 
-
-        # Remove incomplete rows
 
         data_5m = data_5m.dropna(
             subset=["Open", "High", "Low", "Close"]
@@ -72,9 +62,9 @@ def stock(symbol):
         volume = int(last["Volume"])
 
 
-        # =================================================
+        # ==========================================
         # RECENT 5M RANGE
-        # =================================================
+        # ==========================================
 
         recent_5m = data_5m.tail(30)
 
@@ -91,38 +81,39 @@ def stock(symbol):
         range_5m = intraday_high - intraday_low
 
 
-        # Prevent zero range
-
         if range_5m <= 0:
 
-            range_5m = max(price * 0.01, 0.01)
+            range_5m = max(
+                price * 0.01,
+                0.01
+            )
 
 
-        # =================================================
+        # ==========================================
         # 5M SUPPORT / RESISTANCE
-        # =================================================
+        # ==========================================
 
         support_5m = (
             intraday_low +
-            (range_5m * 0.25)
+            range_5m * 0.25
         )
 
 
         resistance_5m = (
             intraday_low +
-            (range_5m * 0.75)
+            range_5m * 0.75
         )
 
 
         midpoint_5m = (
             intraday_low +
-            (range_5m * 0.50)
+            range_5m * 0.50
         )
 
 
-        # =================================================
-        # DAY DATA
-        # =================================================
+        # ==========================================
+        # DAILY DATA
+        # ==========================================
 
         data_day = ticker.history(
             period="3mo",
@@ -144,7 +135,6 @@ def stock(symbol):
                 recent_day["High"].max()
             )
 
-
             day_low = float(
                 recent_day["Low"].min()
             )
@@ -155,18 +145,21 @@ def stock(symbol):
 
             if day_range <= 0:
 
-                day_range = max(price * 0.05, 0.01)
+                day_range = max(
+                    price * 0.05,
+                    0.01
+                )
 
 
             major_support = (
                 day_low +
-                (day_range * 0.25)
+                day_range * 0.25
             )
 
 
             major_resistance = (
                 day_low +
-                (day_range * 0.75)
+                day_range * 0.75
             )
 
         else:
@@ -176,11 +169,19 @@ def stock(symbol):
             major_resistance = resistance_5m
 
 
-        # =================================================
-        # VOLUME CONFIRMATION
-        # =================================================
+        # ==========================================
+        # VOLUME
+        # ==========================================
 
-        volume_data = data_5m["Volume"].tail(20)
+        # Current candle ko average se hata rahe hain
+        # taaki volume confirmation cleaner ho
+
+        volume_data = (
+            data_5m["Volume"]
+            .tail(21)
+            .iloc[:-1]
+        )
+
 
         average_volume = float(
             volume_data.mean()
@@ -190,7 +191,8 @@ def stock(symbol):
         if average_volume > 0:
 
             volume_ratio = (
-                volume / average_volume
+                volume /
+                average_volume
             )
 
         else:
@@ -198,56 +200,36 @@ def stock(symbol):
             volume_ratio = 1.0
 
 
-        # Strong volume = 1.5x average
-
+        # Strong volume
         strong_volume = (
             volume_ratio >= 1.5
         )
 
 
-        # =================================================
-        # 5M CANDLE DIRECTION
-        # =================================================
+        # ==========================================
+        # CANDLE
+        # ==========================================
+
+        candle_close = float(
+            last["Close"]
+        )
+
 
         bullish_candle = (
-            candle_close := float(last["Close"])
-        ) > candle_open
+            candle_close >
+            candle_open
+        )
 
 
         bearish_candle = (
-            candle_close < candle_open
+            candle_close <
+            candle_open
         )
 
 
-        # =================================================
-        # DISTANCE FROM 5M LEVELS
-        # =================================================
-
-        support_distance = abs(
-            price - support_5m
-        ) / price
-
-
-        resistance_distance = abs(
-            price - resistance_5m
-        ) / price
-
-
-        # 0.30% ke andar level ke paas maana jayega
-
-        near_support = (
-            support_distance <= 0.003
-        )
-
-
-        near_resistance = (
-            resistance_distance <= 0.003
-        )
-
-
-        # =================================================
+        # ==========================================
         # ZONE
-        # =================================================
+        # ==========================================
 
         if price < midpoint_5m:
 
@@ -262,26 +244,58 @@ def stock(symbol):
             zone = "Equilibrium"
 
 
-        # =================================================
-        # SIGNAL
-        # =================================================
+        # ==========================================
+        # DISTANCE FROM LEVELS
+        # ==========================================
+
+        support_distance = (
+            abs(price - support_5m)
+            / price
+        )
+
+
+        resistance_distance = (
+            abs(price - resistance_5m)
+            / price
+        )
+
+
+        # Only 0.30% ke andar level ko
+        # "near" maana jayega
+
+        near_support = (
+            support_distance <= 0.003
+        )
+
+
+        near_resistance = (
+            resistance_distance <= 0.003
+        )
+
+
+        # ==========================================
+        # STRICT SIGNAL
+        # ==========================================
 
         signal = "WAIT"
-
 
         signal_reason = (
             "No confirmed setup"
         )
 
 
-        # -------------------------------------------------
-        # BUY SETUP
-        # -------------------------------------------------
+        # ==========================================
+        # STRICT BUY
+        # ==========================================
 
         if (
 
-            near_support
+            zone == "Discount Zone"
+
+            and near_support
+
             and bullish_candle
+
             and strong_volume
 
         ):
@@ -289,18 +303,25 @@ def stock(symbol):
             signal = "BUY AREA"
 
             signal_reason = (
-                "5M support + bullish candle + strong volume"
+                "Discount zone + "
+                "5M support + "
+                "bullish candle + "
+                "strong volume"
             )
 
 
-        # -------------------------------------------------
-        # SELL SETUP
-        # -------------------------------------------------
+        # ==========================================
+        # STRICT SELL
+        # ==========================================
 
         elif (
 
-            near_resistance
+            zone == "Premium Zone"
+
+            and near_resistance
+
             and bearish_candle
+
             and strong_volume
 
         ):
@@ -308,55 +329,16 @@ def stock(symbol):
             signal = "SELL AREA"
 
             signal_reason = (
-                "5M resistance + bearish candle + strong volume"
+                "Premium zone + "
+                "5M resistance + "
+                "bearish candle + "
+                "strong volume"
             )
 
 
-        # -------------------------------------------------
-        # SECONDARY BUY SETUP
-        # Price below midpoint and bullish
-        # but only with volume
-        # -------------------------------------------------
-
-        elif (
-
-            price < midpoint_5m
-            and bullish_candle
-            and strong_volume
-            and price > major_support
-
-        ):
-
-            signal = "BUY AREA"
-
-            signal_reason = (
-                "Discount zone + bullish candle + strong volume"
-            )
-
-
-        # -------------------------------------------------
-        # SECONDARY SELL SETUP
-        # -------------------------------------------------
-
-        elif (
-
-            price > midpoint_5m
-            and bearish_candle
-            and strong_volume
-            and price < major_resistance
-
-        ):
-
-            signal = "SELL AREA"
-
-            signal_reason = (
-                "Premium zone + bearish candle + strong volume"
-            )
-
-
-        # =================================================
+        # ==========================================
         # PREVIOUS CLOSE
-        # =================================================
+        # ==========================================
 
         previous_data = ticker.history(
             period="5d",
@@ -393,9 +375,9 @@ def stock(symbol):
             ) * 100
 
 
-        # =================================================
+        # ==========================================
         # RESPONSE
-        # =================================================
+        # ==========================================
 
         return jsonify({
 
@@ -406,98 +388,87 @@ def stock(symbol):
             "exchange": "NSE",
 
             "price": round(
-                price, 2
+                price,
+                2
             ),
 
             "previous_close":
                 round(
-                    previous_close, 2
+                    previous_close,
+                    2
                 )
                 if previous_close is not None
                 else None,
 
-
-            # 5M LEVELS
-
             "support_5m":
                 round(
-                    support_5m, 2
+                    support_5m,
+                    2
                 ),
 
             "resistance_5m":
                 round(
-                    resistance_5m, 2
+                    resistance_5m,
+                    2
                 ),
-
-
-            # DAY LEVELS
 
             "major_support":
                 round(
-                    major_support, 2
+                    major_support,
+                    2
                 ),
 
             "major_resistance":
                 round(
-                    major_resistance, 2
+                    major_resistance,
+                    2
                 ),
-
-
-            # MARKET DATA
 
             "volume":
                 volume,
 
             "average_volume":
                 round(
-                    average_volume, 0
+                    average_volume,
+                    0
                 ),
 
             "volume_ratio":
                 round(
-                    volume_ratio, 2
+                    volume_ratio,
+                    2
                 ),
-
-
-            # ZONE
 
             "zone":
                 zone,
 
-
-            # SIGNAL
+            "candle":
+                "BULLISH"
+                if bullish_candle
+                else
+                "BEARISH"
+                if bearish_candle
+                else
+                "NEUTRAL",
 
             "signal":
                 signal,
 
-
             "signal_reason":
                 signal_reason,
 
-
-            # PRICE ACTION
-
-            "candle":
-                "BULLISH"
-                if bullish_candle
-                else "BEARISH"
-                if bearish_candle
-                else "NEUTRAL",
-
-
-            # CHANGE
-
             "change":
                 round(
-                    change, 2
+                    change,
+                    2
                 )
                 if change is not None
                 else None,
 
-
             "change_percent":
                 round(
-                    change_percent, 2
+                    change_percent,
+                    2
                 )
                 if change_percent is not None
                 else None
