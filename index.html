@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="hi">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -38,7 +37,7 @@ header{
 }
 
 .container{
-    max-width:1400px;
+    max-width:1500px;
     margin:auto;
     padding:20px;
 }
@@ -73,7 +72,7 @@ button:hover{
 }
 
 button:disabled{
-    opacity:0.6;
+    opacity:.6;
     cursor:not-allowed;
 }
 
@@ -128,7 +127,7 @@ button:disabled{
 table{
     width:100%;
     border-collapse:collapse;
-    min-width:1200px;
+    min-width:1500px;
 }
 
 th,
@@ -136,6 +135,7 @@ td{
     padding:13px;
     text-align:left;
     border-bottom:1px solid #263752;
+    white-space:nowrap;
 }
 
 th{
@@ -214,7 +214,6 @@ th{
 
 </head>
 
-
 <body>
 
 <header>
@@ -224,7 +223,7 @@ th{
 </div>
 
 <div class="subtitle">
-NSE • Live Market Data • Support • Resistance • Zones
+NSE • Day Major Levels • 5M Intraday Levels • Zones
 </div>
 
 </header>
@@ -264,9 +263,7 @@ placeholder="Search stock..."
 id="scanButton"
 onclick="scanStocks()"
 >
-
 🔍 Scan Stocks
-
 </button>
 
 </div>
@@ -345,9 +342,7 @@ NSE
 class="status"
 id="status"
 >
-
 Scanner ready — Click Scan Stocks.
-
 </div>
 
 
@@ -360,13 +355,25 @@ Scanner ready — Click Scan Stocks.
 <tr>
 
 <th>Stock</th>
+
 <th>Price</th>
-<th>Support</th>
-<th>Resistance</th>
+
+<th>Day Support</th>
+
+<th>Day Resistance</th>
+
+<th>5M Support</th>
+
+<th>5M Resistance</th>
+
 <th>Zone</th>
+
 <th>Volume</th>
+
 <th>Signal</th>
+
 <th>Change</th>
+
 <th>Status</th>
 
 </tr>
@@ -379,12 +386,23 @@ Scanner ready — Click Scan Stocks.
 <tr>
 
 <td>RELIANCE</td>
+
 <td>—</td>
+
 <td>—</td>
+
 <td>—</td>
+
 <td>—</td>
+
 <td>—</td>
+
 <td>—</td>
+
+<td>—</td>
+
+<td>—</td>
+
 <td>—</td>
 
 <td>
@@ -403,11 +421,11 @@ Waiting
 
 </div>
 
-
 </div>
 
 
 <script>
+
 
 let scanning = false;
 
@@ -442,21 +460,26 @@ async function scanStocks(){
     const marketName =
         document.getElementById("marketName");
 
+
     const market =
         document.getElementById("market").value;
 
 
     marketName.innerText = market;
 
+
     button.disabled = true;
 
     button.innerText = "⏳ Scanning...";
 
+
     status.innerText =
-        "🔄 Live market data loading...";
+        "🔄 5M + Day market data loading...";
+
 
     apiStatus.innerText =
         "LOADING";
+
 
     table.innerHTML = "";
 
@@ -520,14 +543,24 @@ async function scanStocks(){
                 successCount++;
 
 
-                let signalClass = "waiting";
+                let signalClass =
+                    "waiting";
 
-                if(data.signal === "BUY AREA"){
+
+                if(
+                    data.signal === "BUY AREA"
+                ){
+
                     signalClass = "buy";
+
                 }
 
-                else if(data.signal === "SELL AREA"){
+                else if(
+                    data.signal === "SELL AREA"
+                ){
+
                     signalClass = "sell";
+
                 }
 
 
@@ -535,14 +568,22 @@ async function scanStocks(){
                     "zone-equilibrium";
 
 
-                if(data.zone === "Discount Zone"){
+                if(
+                    data.zone === "Discount Zone"
+                ){
+
                     zoneClass =
                         "zone-discount";
+
                 }
 
-                else if(data.zone === "Premium Zone"){
+                else if(
+                    data.zone === "Premium Zone"
+                ){
+
                     zoneClass =
                         "zone-premium";
+
                 }
 
 
@@ -569,12 +610,22 @@ ${data.symbol ?? symbol}
 
 
 <td>
-₹${data.support ?? "—"}
+₹${data.major_support ?? "—"}
 </td>
 
 
 <td>
-₹${data.resistance ?? "—"}
+₹${data.major_resistance ?? "—"}
+</td>
+
+
+<td>
+₹${data.support_5m ?? "—"}
+</td>
+
+
+<td>
+₹${data.resistance_5m ?? "—"}
 </td>
 
 
@@ -604,7 +655,6 @@ ${data.signal ?? "WAIT"}
 }">
 
 ${data.change ?? "—"}
-
 (${data.change_percent ?? "—"}%)
 
 </td>
@@ -625,8 +675,8 @@ LIVE
 
             }
 
-        }
 
+        }
 
         catch(error){
 
@@ -654,8 +704,9 @@ LIVE
         apiStatus.innerText =
             "CONNECTED";
 
+
         status.innerText =
-            "✅ Live data + S/R + Zone + Signal connected.";
+            "✅ Day + 5M levels connected.";
 
     }
 
@@ -663,6 +714,7 @@ LIVE
 
         apiStatus.innerText =
             "ERROR";
+
 
         status.innerText =
             "❌ Market data load nahi hua.";
@@ -675,12 +727,12 @@ LIVE
     button.innerText =
         "🔍 Scan Stocks";
 
+
     scanning = false;
 
 }
 
 
-/* SEARCH */
 
 document
 .getElementById("search")
@@ -699,7 +751,9 @@ document
         .forEach(
             function(row){
 
-                if(row.cells.length > 0){
+                if(
+                    row.cells.length > 0
+                ){
 
                     const stock =
                         row.cells[0]
@@ -723,5 +777,4 @@ document
 </script>
 
 </body>
-
 </html>
