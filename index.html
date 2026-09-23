@@ -73,6 +73,11 @@ button:hover{
     background:#00b8ee;
 }
 
+button:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+}
+
 .cards{
     display:grid;
     grid-template-columns:repeat(4,1fr);
@@ -199,17 +204,19 @@ NSE • Live Market Data
 
 </header>
 
+
 <div class="container">
+
 
 <div class="controls">
 
 <select id="market">
 
 <option>NSE</option>
-
 <option>BSE</option>
 
 </select>
+
 
 <select id="timeframe">
 
@@ -220,20 +227,28 @@ NSE • Live Market Data
 
 </select>
 
+
 <input
 type="text"
 id="search"
 placeholder="Search stock..."
 >
 
-<button onclick="scanStocks()">
+
+<button
+id="scanButton"
+onclick="scanStocks()"
+>
+
 🔍 Scan Stocks
+
 </button>
 
 </div>
 
 
 <div class="cards">
+
 
 <div class="card">
 
@@ -298,6 +313,7 @@ NSE
 
 </div>
 
+
 </div>
 
 
@@ -305,7 +321,9 @@ NSE
 class="status"
 id="status"
 >
+
 Scanner ready — Click Scan Stocks.
+
 </div>
 
 
@@ -359,27 +377,52 @@ Waiting
 
 </div>
 
+
 </div>
 
 
 <script>
 
+
+let scanning = false;
+
+
 async function scanStocks(){
+
+
+    if(scanning){
+
+        return;
+
+    }
+
+
+    scanning = true;
+
+
+    const button =
+        document.getElementById("scanButton");
+
 
     const table =
         document.getElementById("stockTable");
 
+
     const status =
         document.getElementById("status");
+
 
     const stocksCount =
         document.getElementById("stocksCount");
 
+
     const liveCount =
         document.getElementById("liveCount");
 
+
     const apiStatus =
         document.getElementById("apiStatus");
+
 
     const marketName =
         document.getElementById("marketName");
@@ -391,6 +434,13 @@ async function scanStocks(){
 
     marketName.innerText =
         market;
+
+
+    button.disabled = true;
+
+
+    button.innerText =
+        "⏳ Scanning...";
 
 
     status.innerText =
@@ -427,7 +477,9 @@ async function scanStocks(){
 
     for(const symbol of stocks){
 
+
         try{
+
 
             const response =
                 await fetch(
@@ -460,6 +512,7 @@ async function scanStocks(){
 
             if(data.status === "success"){
 
+
                 successCount++;
 
 
@@ -467,7 +520,12 @@ async function scanStocks(){
                     document.createElement("tr");
 
 
+                row.dataset.symbol =
+                    symbol;
+
+
                 row.innerHTML = `
+
 
 <td>
 
@@ -513,7 +571,11 @@ ${data.volume ?? "—"}
 </td>
 
 
-<td class="green">
+<td class="${
+    Number(data.change) >= 0
+    ? "green"
+    : "red"
+}">
 
 ${data.change ?? "—"}
 
@@ -532,6 +594,7 @@ LIVE
 
 </td>
 
+
 `;
 
 
@@ -539,10 +602,12 @@ LIVE
 
             }
 
+
         }
 
 
         catch(error){
+
 
             console.log(
                 "API Error:",
@@ -550,7 +615,9 @@ LIVE
                 error
             );
 
+
         }
+
 
     }
 
@@ -565,6 +632,7 @@ LIVE
 
     if(successCount > 0){
 
+
         apiStatus.innerText =
             "CONNECTED";
 
@@ -572,9 +640,12 @@ LIVE
         status.innerText =
             "✅ Live market data connected successfully.";
 
+
     }
 
+
     else{
+
 
         apiStatus.innerText =
             "ERROR";
@@ -585,16 +656,28 @@ LIVE
 
     }
 
+
+    button.disabled = false;
+
+
+    button.innerText =
+        "🔍 Scan Stocks";
+
+
+    scanning = false;
+
 }
 
 
 /* SEARCH */
+
 
 document
 .getElementById("search")
 .addEventListener(
     "input",
     function(){
+
 
         const value =
             this.value.toUpperCase();
@@ -607,7 +690,9 @@ document
         .forEach(
             function(row){
 
+
                 if(row.cells.length > 0){
+
 
                     const stock =
                         row.cells[0]
@@ -620,13 +705,17 @@ document
                         ? ""
                         : "none";
 
+
                 }
+
 
             }
         );
 
+
     }
 );
+
 
 </script>
 
