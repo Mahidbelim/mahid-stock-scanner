@@ -1,6 +1,7 @@
+```html
 <!DOCTYPE html>
-
 <html lang="hi">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -123,7 +124,7 @@ button:hover{
 table{
     width:100%;
     border-collapse:collapse;
-    min-width:800px;
+    min-width:900px;
 }
 
 th,
@@ -241,7 +242,6 @@ NSE & BSE • Support • Resistance • Discount Zone
 type="text"
 id="search"
 placeholder="Search stock..."
-
 >
 
 <button onclick="scanStocks()">
@@ -259,7 +259,7 @@ Strong Support
 </div>
 
 <div class="card-value green" id="supportCount">
-12
+0
 </div>
 
 </div>
@@ -271,7 +271,7 @@ Strong Resistance
 </div>
 
 <div class="card-value red" id="resistanceCount">
-8
+0
 </div>
 
 </div>
@@ -283,7 +283,7 @@ Discount Zone
 </div>
 
 <div class="card-value yellow" id="discountCount">
-15
+0
 </div>
 
 </div>
@@ -295,7 +295,7 @@ Stocks Scanned
 </div>
 
 <div class="card-value blue" id="stocksCount">
-4
+0
 </div>
 
 </div>
@@ -336,27 +336,6 @@ Scanner ready — Click Scan Stocks.
 <td>—</td>
 
 <td>
-<span class="badge support">
-Waiting
-</span>
-</td>
-
-<td>—</td>
-<td>—</td>
-<td>—</td>
-
-<td>
-Waiting
-</td>
-
-</tr>
-
-<tr>
-
-<td>INFY</td>
-<td>—</td>
-
-<td>
 <span class="badge neutral">
 Waiting
 </span>
@@ -366,30 +345,7 @@ Waiting
 <td>—</td>
 <td>—</td>
 
-<td>
-Waiting
-</td>
-
-</tr>
-
-<tr>
-
-<td>HDFCBANK</td>
-<td>—</td>
-
-<td>
-<span class="badge neutral">
-Waiting
-</span>
-</td>
-
-<td>—</td>
-<td>—</td>
-<td>—</td>
-
-<td>
-Waiting
-</td>
+<td>Waiting</td>
 
 </tr>
 
@@ -408,9 +364,45 @@ Waiting
 <td>—</td>
 <td>—</td>
 
+<td>Waiting</td>
+
+</tr>
+
+<tr>
+
+<td>INFY</td>
+<td>—</td>
+
 <td>
+<span class="badge neutral">
 Waiting
+</span>
 </td>
+
+<td>—</td>
+<td>—</td>
+<td>—</td>
+
+<td>Waiting</td>
+
+</tr>
+
+<tr>
+
+<td>HDFCBANK</td>
+<td>—</td>
+
+<td>
+<span class="badge neutral">
+Waiting
+</span>
+</td>
+
+<td>—</td>
+<td>—</td>
+<td>—</td>
+
+<td>Waiting</td>
 
 </tr>
 
@@ -439,47 +431,54 @@ async function scanStocks(){
         document.getElementById("timeframe").value;
 
     status.innerText =
-        "🔄 " + market +
-        " " + timeframe +
+        "🔄 " + market + " " + timeframe +
         " market data loading...";
 
     table.innerHTML = "";
 
     const stocks = [
-    "RELIANCE",
-    "TCS",
-    "INFY",
-    "HDFCBANK",
-    "ICICIBANK",
-    "SBIN",
-    "BHARTIARTL",
-    "ITC",
-    "LT",
-    "AXISBANK",
-    "KOTAKBANK",
-    "HINDUNILVR",
-    "BAJFINANCE",
-    "MARUTI",
-    "SUNPHARMA",
-    "TITAN",
-    "ASIANPAINT",
-    "HCLTECH",
-    "WIPRO",
-    "NTPC",
-    "POWERGRID",
-    "ONGC",
-    "COALINDIA",
-    "ADANIENT",
-    "ADANIPORTS",
-    "TATAMOTORS",
-    "TATASTEEL",
-    "ULTRACEMCO",
-    "M&M",
-    "TECHM"
+
+        "RELIANCE",
+        "TCS",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "BHARTIARTL",
+        "ITC",
+        "LT",
+        "AXISBANK",
+        "KOTAKBANK",
+        "HINDUNILVR",
+        "BAJFINANCE",
+        "MARUTI",
+        "SUNPHARMA",
+        "TITAN",
+        "ASIANPAINT",
+        "HCLTECH",
+        "WIPRO",
+        "NTPC",
+        "POWERGRID",
+        "ONGC",
+        "COALINDIA",
+        "ADANIENT",
+        "ADANIPORTS",
+        "TATAMOTORS",
+        "TATASTEEL",
+        "ULTRACEMCO",
+        "M&M",
+        "TECHM"
 
     ];
 
     let successCount = 0;
+
+    let supportCount = 0;
+
+    let resistanceCount = 0;
+
+    let discountCount = 0;
+
 
     for(const symbol of stocks){
 
@@ -487,79 +486,179 @@ async function scanStocks(){
 
             const response =
                 await fetch(
-                    "https://mahid-stock-scanner-api.onrender.com/api/stock/" + symbol
+                    "https://mahid-stock-scanner-api.onrender.com/api/stock/"
+                    + symbol
                 );
+
+            if(!response.ok){
+
+                console.log(
+                    symbol + " API error:",
+                    response.status
+                );
+
+                continue;
+
+            }
 
             const data =
                 await response.json();
+
 
             if(data.status === "success"){
 
                 successCount++;
 
+
+                const zone =
+                    data.zone ?? "Waiting";
+
+
+                if(zone === "Strong Support"){
+
+                    supportCount++;
+
+                }
+
+
+                if(zone === "Strong Resistance"){
+
+                    resistanceCount++;
+
+                }
+
+
+                if(zone === "Discount Zone"){
+
+                    discountCount++;
+
+                }
+
+
+                let zoneClass =
+                    "neutral";
+
+
+                if(zone === "Strong Support"){
+
+                    zoneClass =
+                        "support";
+
+                }
+
+
+                if(zone === "Strong Resistance"){
+
+                    zoneClass =
+                        "resistance";
+
+                }
+
+
+                if(zone === "Discount Zone"){
+
+                    zoneClass =
+                        "discount";
+
+                }
+
+
+                let signal =
+                    data.signal ?? "WAIT";
+
+
+                let signalClass =
+                    "yellow";
+
+
+                if(signal === "BUY AREA"){
+
+                    signalClass =
+                        "green";
+
+                }
+
+
+                if(signal === "SELL AREA"){
+
+                    signalClass =
+                        "red";
+
+                }
+
+
                 const row =
                     document.createElement("tr");
 
+
                 row.innerHTML = `
-<td>
-    <span class="badge ${
-        data.zone === "Discount Zone"
-        ? "discount"
-        : data.zone === "Premium Zone"
-        ? "resistance"
-        : "neutral"
-  <td>
-    ${data.volume ?? "—"}
-</td>
-
-<td class="${
-    data.signal === "BUY AREA"
-    ? "green"
-    : data.signal === "SELL AREA"
-    ? "red"
-    : "yellow"
-}">
-    ${data.signal ?? "WAIT"}
-</td>
 
 <td>
+
+    <strong>${symbol}</strong>
+
+</td>
+
+
+<td>
+
     ₹${data.price ?? "—"}
+
 </td>
+
 
 <td>
-    ₹${data.target ?? "—"}
+
+    <span class="badge ${zoneClass}">
+
+        ${zone}
+
+    </span>
+
 </td>
+
 
 <td>
-    ₹${data.stoploss ?? "—"}
+
+    ₹${data.support ?? "—"}
+
 </td>
+
+
+<td>
+
+    ₹${data.resistance ?? "—"}
+
 </td>
-                        </span>
-                    </td>
 
-                    <td>
-                        —
-                    </td>
 
-                    <td>
-                        —
-                    </td>
+<td>
 
-                    <td>
-                        ${data.volume ?? "—"}
-                    </td>
+    ${data.volume ?? "—"}
 
-                    <td class="green">
-                        Live
-                    </td>
+</td>
 
-                `;
+
+<td class="${signalClass}">
+
+    <strong>
+
+        ${signal}
+
+    </strong>
+
+</td>
+
+`;
+
 
                 table.appendChild(row);
 
             }
 
-        }catch(error){
+        }
+
+        catch(error){
 
             console.log(
                 "Error loading " + symbol,
@@ -570,15 +669,35 @@ async function scanStocks(){
 
     }
 
+
     document.getElementById("stocksCount")
-        .innerText = successCount;
+        .innerText =
+        successCount;
+
+
+    document.getElementById("supportCount")
+        .innerText =
+        supportCount;
+
+
+    document.getElementById("resistanceCount")
+        .innerText =
+        resistanceCount;
+
+
+    document.getElementById("discountCount")
+        .innerText =
+        discountCount;
+
 
     if(successCount > 0){
 
         status.innerText =
             "✅ Market data loaded successfully.";
 
-    }else{
+    }
+
+    else{
 
         status.innerText =
             "❌ Market data load nahi hua.";
@@ -591,34 +710,43 @@ async function scanStocks(){
 /* SEARCH */
 
 document.getElementById("search")
-.addEventListener("input", function(){
+.addEventListener(
+    "input",
+    function(){
 
-    const value =
-        this.value.toUpperCase();
+        const value =
+            this.value.toUpperCase();
 
-    document
+
+        document
         .querySelectorAll("#stockTable tr")
-        .forEach(function(row){
+        .forEach(
+            function(row){
 
-            if(row.cells.length > 0){
+                if(row.cells.length > 0){
 
-                const stock =
-                    row.cells[0]
-                    .innerText
-                    .toUpperCase();
+                    const stock =
+                        row.cells[0]
+                        .innerText
+                        .toUpperCase();
 
-                row.style.display =
-                    stock.includes(value)
-                    ? ""
-                    : "none";
+
+                    row.style.display =
+                        stock.includes(value)
+                        ? ""
+                        : "none";
+
+                }
 
             }
+        );
 
-        });
-
-});
+    }
+);
 
 </script>
 
 </body>
+
 </html>
+```
