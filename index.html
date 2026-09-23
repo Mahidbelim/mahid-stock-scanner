@@ -1,446 +1,383 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Mahid Stock Scanner</title>
+<title>Mahid Scanner</title>
 
 <style>
-
-*{
-    box-sizing:border-box;
+* {
+    box-sizing: border-box;
 }
 
-body{
-    margin:0;
-    font-family:Arial,sans-serif;
-    background:#08111f;
-    color:white;
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0b0f14;
+    color: #ffffff;
 }
 
-header{
-    background:#101c30;
-    padding:20px;
-    border-bottom:1px solid #263752;
+.container {
+    width: 100%;
+    max-width: 1600px;
+    margin: auto;
+    padding: 15px;
 }
 
-.logo{
-    font-size:26px;
-    font-weight:bold;
-    color:#00d9ff;
+h1 {
+    margin: 0 0 5px 0;
+    font-size: 26px;
 }
 
-.subtitle{
-    color:#9aa8bd;
-    margin-top:6px;
+.subtitle {
+    color: #9aa4b2;
+    margin-bottom: 15px;
 }
 
-.container{
-    max-width:1500px;
-    margin:auto;
-    padding:20px;
-}
-
-.controls{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin-bottom:20px;
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
 }
 
 select,
 input,
-button{
-    padding:12px;
-    border-radius:8px;
-    border:1px solid #31415d;
-    background:#111d31;
-    color:white;
-    font-size:15px;
+button {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #303844;
+    background: #151b23;
+    color: white;
+    font-size: 14px;
 }
 
-button{
-    background:#0099cc;
-    border:none;
-    cursor:pointer;
-    font-weight:bold;
+input {
+    min-width: 180px;
 }
 
-button:hover{
-    background:#00b8ee;
+button {
+    background: #1d7cff;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
 }
 
-button:disabled{
-    opacity:.6;
-    cursor:not-allowed;
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.cards{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:15px;
-    margin-bottom:20px;
+.status {
+    margin: 10px 0;
+    color: #9aa4b2;
 }
 
-.card{
-    background:#111d31;
-    border:1px solid #263752;
-    border-radius:12px;
-    padding:18px;
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #252d38;
+    border-radius: 10px;
 }
 
-.card-title{
-    color:#9aa8bd;
-    font-size:14px;
-}
-
-.card-value{
-    font-size:25px;
-    font-weight:bold;
-    margin-top:8px;
-}
-
-.blue{
-    color:#00d9ff;
-}
-
-.green{
-    color:#22d69a;
-}
-
-.red{
-    color:#ff6577;
-}
-
-.yellow{
-    color:#ffd166;
-}
-
-.table-box{
-    background:#111d31;
-    border:1px solid #263752;
-    border-radius:12px;
-    overflow:auto;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    min-width:1500px;
+table {
+    width: 100%;
+    min-width: 1350px;
+    border-collapse: collapse;
 }
 
 th,
-td{
-    padding:13px;
-    text-align:left;
-    border-bottom:1px solid #263752;
-    white-space:nowrap;
+td {
+    padding: 11px 10px;
+    border-bottom: 1px solid #252d38;
+    text-align: center;
+    white-space: nowrap;
 }
 
-th{
-    color:#9aa8bd;
-    font-size:13px;
+th {
+    background: #151b23;
+    color: #dce3ec;
+    font-size: 13px;
+    position: sticky;
+    top: 0;
 }
 
-.status{
-    margin:15px 0;
-    color:#9aa8bd;
+td {
+    font-size: 13px;
 }
 
-.badge{
-    padding:6px 10px;
-    border-radius:20px;
-    font-size:12px;
-    font-weight:bold;
+.stock {
+    font-weight: bold;
 }
 
-.live{
-    background:#123c35;
-    color:#35e0ae;
+.green {
+    color: #35d07f;
+    font-weight: bold;
 }
 
-.waiting{
-    background:#26344a;
-    color:#b9c5d6;
+.red {
+    color: #ff5c69;
+    font-weight: bold;
 }
 
-.buy{
-    background:#123c35;
-    color:#35e0ae;
+.yellow {
+    color: #ffd166;
+    font-weight: bold;
 }
 
-.sell{
-    background:#4a1f2a;
-    color:#ff7180;
+.blue {
+    color: #55aaff;
+    font-weight: bold;
 }
 
-.zone-discount{
-    color:#35e0ae;
-    font-weight:bold;
+.reason {
+    white-space: normal;
+    min-width: 250px;
+    max-width: 320px;
+    color: #c9d2de;
 }
 
-.zone-premium{
-    color:#ff7180;
-    font-weight:bold;
+.live {
+    color: #35d07f;
+    font-weight: bold;
 }
 
-.zone-equilibrium{
-    color:#ffd166;
-    font-weight:bold;
+.error {
+    color: #ff5c69;
 }
 
-@media(max-width:800px){
-
-    .cards{
-        grid-template-columns:repeat(2,1fr);
+@media (max-width: 600px) {
+    .container {
+        padding: 10px;
     }
 
-}
-
-@media(max-width:500px){
-
-    .cards{
-        grid-template-columns:1fr;
+    h1 {
+        font-size: 22px;
     }
 
-    .container{
-        padding:12px;
+    .controls {
+        flex-direction: column;
     }
 
+    select,
+    input,
+    button {
+        width: 100%;
+    }
 }
-
 </style>
-
 </head>
 
 <body>
 
-<header>
-
-<div class="logo">
-📊 Mahid Stock Scanner
-</div>
-
-<div class="subtitle">
-NSE • Day Major Levels • 5M Intraday Levels • Zones
-</div>
-
-</header>
-
-
 <div class="container">
 
+    <h1>📊 Mahid Scanner</h1>
 
-<div class="controls">
+    <div class="subtitle">
+        NSE Stock Scanner • Support / Resistance • Volume • Zone • Signals
+    </div>
 
-<select id="market">
+    <div class="controls">
 
-<option>NSE</option>
-<option>BSE</option>
+        <select id="exchange">
+            <option value="NSE">NSE</option>
+            <option value="BSE">BSE</option>
+        </select>
 
-</select>
+        <select id="timeframe">
+            <option value="5m">5 Minute</option>
+            <option value="15m">15 Minute</option>
+            <option value="1d">Daily</option>
+        </select>
 
+        <input
+            type="text"
+            id="search"
+            placeholder="Search stock..."
+        >
 
-<select id="timeframe">
+        <button id="scanBtn" onclick="scanStocks()">
+            🔍 Scan Stocks
+        </button>
 
-<option>5 Minute</option>
-<option>15 Minute</option>
-<option>1 Hour</option>
-<option>1 Day</option>
+    </div>
 
-</select>
+    <div id="status" class="status">
+        Ready to scan
+    </div>
 
+    <div class="table-wrap">
 
-<input
-type="text"
-id="search"
-placeholder="Search stock..."
->
+        <table>
 
+            <thead>
+                <tr>
 
-<button
-id="scanButton"
-onclick="scanStocks()"
->
-🔍 Scan Stocks
-</button>
+                    <th>Stock</th>
 
-</div>
+                    <th>Price</th>
 
+                    <th>Day Support</th>
 
-<div class="cards">
+                    <th>Day Resistance</th>
 
+                    <th>5M Support</th>
 
-<div class="card">
+                    <th>5M Resistance</th>
 
-<div class="card-title">
-Stocks Scanned
-</div>
+                    <th>Zone</th>
 
-<div
-class="card-value blue"
-id="stocksCount"
->
-0
-</div>
+                    <th>Volume</th>
 
-</div>
+                    <th>Avg Volume</th>
 
+                    <th>Vol Ratio</th>
 
-<div class="card">
+                    <th>Candle</th>
 
-<div class="card-title">
-Live Data
-</div>
+                    <th>Signal</th>
 
-<div
-class="card-value green"
-id="liveCount"
->
-0
-</div>
+                    <th>Signal Reason</th>
 
-</div>
+                    <th>Change</th>
 
+                    <th>Status</th>
 
-<div class="card">
+                </tr>
+            </thead>
 
-<div class="card-title">
-API Status
-</div>
+            <tbody id="stockTable">
 
-<div
-class="card-value green"
-id="apiStatus"
->
-READY
-</div>
+            </tbody>
 
-</div>
+        </table>
 
-
-<div class="card">
-
-<div class="card-title">
-Market
-</div>
-
-<div
-class="card-value blue"
-id="marketName"
->
-NSE
-</div>
-
-</div>
-
-</div>
-
-
-<div
-class="status"
-id="status"
->
-Scanner ready — Click Scan Stocks.
-</div>
-
-
-<div class="table-box">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>Stock</th>
-
-<th>Price</th>
-
-<th>Day Support</th>
-
-<th>Day Resistance</th>
-
-<th>5M Support</th>
-
-<th>5M Resistance</th>
-
-<th>Zone</th>
-
-<th>Volume</th>
-
-<th>Signal</th>
-
-<th>Change</th>
-
-<th>Status</th>
-
-</tr>
-
-</thead>
-
-
-<tbody id="stockTable">
-
-<tr>
-
-<td>RELIANCE</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>—</td>
-
-<td>
-
-<span class="badge waiting">
-Waiting
-</span>
-
-</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
+    </div>
 
 </div>
 
 
 <script>
 
+const API_URL =
+    "https://mahid-stock-scanner-api.onrender.com/api/stock/";
+
+const stocks = [
+    "RELIANCE",
+    "TCS",
+    "INFY",
+    "HDFCBANK",
+    "ICICIBANK",
+    "SBIN",
+    "BHARTIARTL",
+    "ITC",
+    "LT",
+    "AXISBANK",
+    "KOTAKBANK",
+    "HINDUNILVR"
+];
 
 let scanning = false;
 
 
-async function scanStocks(){
+// --------------------------------------------------
+// FORMAT NUMBER
+// --------------------------------------------------
 
-    if(scanning){
+function formatNumber(value) {
+
+    if (value === null || value === undefined) {
+        return "—";
+    }
+
+    return Number(value).toLocaleString("en-IN");
+}
+
+
+// --------------------------------------------------
+// FORMAT PRICE
+// --------------------------------------------------
+
+function formatPrice(value) {
+
+    if (value === null || value === undefined) {
+        return "₹—";
+    }
+
+    return "₹" + Number(value).toFixed(2);
+}
+
+
+// --------------------------------------------------
+// SIGNAL CLASS
+// --------------------------------------------------
+
+function signalClass(signal) {
+
+    if (signal === "BUY AREA") {
+        return "green";
+    }
+
+    if (signal === "SELL AREA") {
+        return "red";
+    }
+
+    return "yellow";
+}
+
+
+// --------------------------------------------------
+// ZONE CLASS
+// --------------------------------------------------
+
+function zoneClass(zone) {
+
+    if (zone === "Discount Zone") {
+        return "green";
+    }
+
+    if (zone === "Premium Zone") {
+        return "red";
+    }
+
+    return "yellow";
+}
+
+
+// --------------------------------------------------
+// CANDLE CLASS
+// --------------------------------------------------
+
+function candleClass(candle) {
+
+    if (candle === "BULLISH") {
+        return "green";
+    }
+
+    if (candle === "BEARISH") {
+        return "red";
+    }
+
+    return "yellow";
+}
+
+
+// --------------------------------------------------
+// SCAN STOCKS
+// --------------------------------------------------
+
+async function scanStocks() {
+
+    if (scanning) {
         return;
     }
 
     scanning = true;
 
-
     const button =
-        document.getElementById("scanButton");
+        document.getElementById("scanBtn");
 
     const table =
         document.getElementById("stockTable");
@@ -448,278 +385,241 @@ async function scanStocks(){
     const status =
         document.getElementById("status");
 
-    const stocksCount =
-        document.getElementById("stocksCount");
-
-    const liveCount =
-        document.getElementById("liveCount");
-
-    const apiStatus =
-        document.getElementById("apiStatus");
-
-    const marketName =
-        document.getElementById("marketName");
-
-
-    const market =
-        document.getElementById("market").value;
-
-
-    marketName.innerText = market;
-
-
     button.disabled = true;
 
-    button.innerText = "⏳ Scanning...";
-
-
-    status.innerText =
-        "🔄 5M + Day market data loading...";
-
-
-    apiStatus.innerText =
-        "LOADING";
-
+    button.innerText = "Scanning...";
 
     table.innerHTML = "";
 
-
-    const stocks = [
-
-        "RELIANCE",
-        "TCS",
-        "INFY",
-        "HDFCBANK",
-        "ICICIBANK",
-        "SBIN",
-        "BHARTIARTL",
-        "ITC",
-        "LT",
-        "AXISBANK",
-        "KOTAKBANK",
-        "HINDUNILVR"
-
-    ];
+    status.innerText =
+        "Scanning 12 stocks...";
 
 
-    let successCount = 0;
+    for (const symbol of stocks) {
+
+        // Create loading row
+
+        const row =
+            document.createElement("tr");
+
+        row.id =
+            "row-" + symbol;
+
+        row.innerHTML = `
+
+            <td class="stock">
+                ${symbol}
+            </td>
+
+            <td>Loading...</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>WAIT</td>
+
+            <td class="reason">
+                Loading...
+            </td>
+
+            <td>—</td>
+
+            <td>Loading</td>
+
+        `;
+
+        table.appendChild(row);
 
 
-    for(const symbol of stocks){
-
-        try{
+        try {
 
             const response =
                 await fetch(
-                    "https://mahid-stock-scanner-api.onrender.com/api/stock/"
-                    + symbol
+                    API_URL +
+                    encodeURIComponent(symbol)
                 );
-
-
-            if(!response.ok){
-
-                console.log(
-                    symbol,
-                    response.status
-                );
-
-                continue;
-
-            }
 
 
             const data =
                 await response.json();
 
 
-            console.log(
-                symbol,
-                data
-            );
-
-
-            if(data.status === "success"){
-
-                successCount++;
-
-
-                let signalClass =
-                    "waiting";
-
-
-                if(
-                    data.signal === "BUY AREA"
-                ){
-
-                    signalClass = "buy";
-
-                }
-
-                else if(
-                    data.signal === "SELL AREA"
-                ){
-
-                    signalClass = "sell";
-
-                }
-
-
-                let zoneClass =
-                    "zone-equilibrium";
-
-
-                if(
-                    data.zone === "Discount Zone"
-                ){
-
-                    zoneClass =
-                        "zone-discount";
-
-                }
-
-                else if(
-                    data.zone === "Premium Zone"
-                ){
-
-                    zoneClass =
-                        "zone-premium";
-
-                }
-
-
-                const row =
-                    document.createElement("tr");
-
-
-                row.dataset.symbol =
-                    symbol;
-
+            if (data.status !== "success") {
 
                 row.innerHTML = `
 
-<td>
-<strong>
-${data.symbol ?? symbol}
-</strong>
-</td>
+                    <td class="stock">
+                        ${symbol}
+                    </td>
 
+                    <td colspan="13"
+                        class="error">
+                        ${data.message || "Data error"}
+                    </td>
 
-<td>
-₹${data.price ?? "—"}
-</td>
+                    <td class="error">
+                        ERROR
+                    </td>
 
+                `;
 
-<td>
-₹${data.major_support ?? "—"}
-</td>
-
-
-<td>
-₹${data.major_resistance ?? "—"}
-</td>
-
-
-<td>
-₹${data.support_5m ?? "—"}
-</td>
-
-
-<td>
-₹${data.resistance_5m ?? "—"}
-</td>
-
-
-<td class="${zoneClass}">
-${data.zone ?? "—"}
-</td>
-
-
-<td>
-${data.volume ?? "—"}
-</td>
-
-
-<td>
-
-<span class="badge ${signalClass}">
-${data.signal ?? "WAIT"}
-</span>
-
-</td>
-
-
-<td class="${
-    Number(data.change) >= 0
-    ? "green"
-    : "red"
-}">
-
-${data.change ?? "—"}
-(${data.change_percent ?? "—"}%)
-
-</td>
-
-
-<td>
-
-<span class="badge live">
-LIVE
-</span>
-
-</td>
-
-`;
-
-
-                table.appendChild(row);
-
+                continue;
             }
 
 
+            const signal =
+                data.signal || "WAIT";
+
+            const zone =
+                data.zone || "—";
+
+            const candle =
+                data.candle || "—";
+
+
+            row.innerHTML = `
+
+                <td class="stock">
+                    ${data.symbol || symbol}
+                </td>
+
+
+                <td>
+                    ${formatPrice(data.price)}
+                </td>
+
+
+                <td>
+                    ${formatPrice(data.major_support)}
+                </td>
+
+
+                <td>
+                    ${formatPrice(data.major_resistance)}
+                </td>
+
+
+                <td>
+                    ${formatPrice(data.support_5m)}
+                </td>
+
+
+                <td>
+                    ${formatPrice(data.resistance_5m)}
+                </td>
+
+
+                <td class="${zoneClass(zone)}">
+                    ${zone}
+                </td>
+
+
+                <td>
+                    ${formatNumber(data.volume)}
+                </td>
+
+
+                <td>
+                    ${formatNumber(data.average_volume)}
+                </td>
+
+
+                <td class="${
+                    Number(data.volume_ratio) >= 1.5
+                    ? "green"
+                    : "yellow"
+                }">
+                    ${
+                        data.volume_ratio !== null &&
+                        data.volume_ratio !== undefined
+                        ? Number(data.volume_ratio).toFixed(2) + "x"
+                        : "—"
+                    }
+                </td>
+
+
+                <td class="${candleClass(candle)}">
+                    ${candle}
+                </td>
+
+
+                <td class="${signalClass(signal)}">
+                    ${signal}
+                </td>
+
+
+                <td class="reason">
+                    ${data.signal_reason || "No confirmed setup"}
+                </td>
+
+
+                <td class="${
+                    Number(data.change) >= 0
+                    ? "green"
+                    : "red"
+                }">
+
+                    ${
+                        data.change !== null &&
+                        data.change !== undefined
+                        ? formatPrice(data.change) +
+                          " (" +
+                          Number(data.change_percent).toFixed(2) +
+                          "%)"
+                        : "—"
+                    }
+
+                </td>
+
+
+                <td class="live">
+                    LIVE
+                </td>
+
+            `;
+
+
+        } catch (error) {
+
+            row.innerHTML = `
+
+                <td class="stock">
+                    ${symbol}
+                </td>
+
+                <td colspan="13"
+                    class="error">
+                    Connection error
+                </td>
+
+                <td class="error">
+                    ERROR
+                </td>
+
+            `;
+
         }
 
-        catch(error){
-
-            console.log(
-                "API Error:",
-                symbol,
-                error
-            );
-
-        }
-
     }
 
 
-    stocksCount.innerText =
-        successCount;
-
-
-    liveCount.innerText =
-        successCount;
-
-
-    if(successCount > 0){
-
-        apiStatus.innerText =
-            "CONNECTED";
-
-
-        status.innerText =
-            "✅ Day + 5M levels connected.";
-
-    }
-
-    else{
-
-        apiStatus.innerText =
-            "ERROR";
-
-
-        status.innerText =
-            "❌ Market data load nahi hua.";
-
-    }
+    status.innerText =
+        "Scan complete • 12 stocks checked";
 
 
     button.disabled = false;
@@ -727,52 +627,57 @@ LIVE
     button.innerText =
         "🔍 Scan Stocks";
 
-
     scanning = false;
 
 }
 
 
+// --------------------------------------------------
+// SEARCH
+// --------------------------------------------------
 
 document
-.getElementById("search")
-.addEventListener(
-    "input",
-    function(){
+    .getElementById("search")
+    .addEventListener(
+        "input",
+        function () {
 
-        const value =
-            this.value.toUpperCase();
-
-
-        document
-        .querySelectorAll(
-            "#stockTable tr"
-        )
-        .forEach(
-            function(row){
-
-                if(
-                    row.cells.length > 0
-                ){
-
-                    const stock =
-                        row.cells[0]
-                        .innerText
-                        .toUpperCase();
+            const search =
+                this.value
+                .toUpperCase()
+                .trim();
 
 
-                    row.style.display =
-                        stock.includes(value)
-                        ? ""
-                        : "none";
+            const rows =
+                document.querySelectorAll(
+                    "#stockTable tr"
+                );
 
+
+            rows.forEach(row => {
+
+                const stock =
+                    row
+                    .querySelector(".stock");
+
+                if (!stock) {
+                    return;
                 }
 
-            }
-        );
+                const symbol =
+                    stock.innerText
+                    .toUpperCase();
 
-    }
-);
+
+                row.style.display =
+                    symbol.includes(search)
+                    ? ""
+                    : "none";
+
+            });
+
+        }
+    );
 
 </script>
 
