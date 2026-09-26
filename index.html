@@ -2,13 +2,9 @@
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8">
 
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Mahid Scanner</title>
 
@@ -19,448 +15,774 @@
 }
 
 body {
-
     margin: 0;
-
     font-family: Arial, sans-serif;
-
     background: #0b0f14;
-
     color: white;
 }
 
 .container {
-
     width: 100%;
-
     max-width: 1600px;
-
     margin: auto;
-
     padding: 15px;
 }
 
 h1 {
-
     margin: 0;
-
     font-size: 26px;
 }
 
 .subtitle {
-
     color: #9aa4b2;
-
     margin: 5px 0 15px;
 }
 
 .controls {
-
     display: flex;
-
     gap: 10px;
-
-    flex-wrap: wrap;
-
     margin-bottom: 15px;
 }
 
 button {
-
-    padding: 11px 18px;
-
+    padding: 11px 20px;
     border: none;
-
     border-radius: 8px;
-
     background: #1d7cff;
-
     color: white;
-
     font-weight: bold;
-
     cursor: pointer;
 }
 
 button:disabled {
-
     opacity: .5;
-
     cursor: not-allowed;
 }
 
 .status {
-
-    margin: 10px 0;
-
+    margin: 12px 0;
     color: #9aa4b2;
 }
 
-.table-wrap {
+.info {
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    margin: 15px 0;
+    color: #c9d2de;
+}
 
-    width: 100%;
-
-    overflow-x: auto;
-
+.info-box {
+    background: #111720;
     border: 1px solid #252d38;
+    padding: 10px 14px;
+    border-radius: 8px;
+}
 
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #252d38;
     border-radius: 10px;
 }
 
 table {
-
     width: 100%;
-
-    min-width: 1200px;
-
+    min-width: 1100px;
     border-collapse: collapse;
 }
 
 th,
 td {
-
     padding: 12px 10px;
-
     border-bottom: 1px solid #252d38;
-
     text-align: center;
-
     white-space: nowrap;
 }
 
 th {
-
     background: #151b23;
-
     color: #dce3ec;
-
     position: sticky;
-
     top: 0;
 }
 
 .stock {
-
     font-weight: bold;
-
     font-size: 15px;
 }
 
 .green {
-
     color: #35d07f;
-
     font-weight: bold;
 }
 
 .red {
-
     color: #ff5c69;
-
     font-weight: bold;
 }
 
 .yellow {
-
     color: #ffd166;
-
     font-weight: bold;
 }
 
 .blue {
-
     color: #55aaff;
-
     font-weight: bold;
 }
 
 .reason {
-
     white-space: normal;
-
     min-width: 300px;
-
     max-width: 450px;
-
     text-align: left;
-
     color: #c9d2de;
 }
 
-.badge {
-
-    padding: 5px 9px;
-
-    border-radius: 6px;
-
-    background: #151b23;
+.breakout {
+    color: #35d07f;
+    font-weight: bold;
 }
 
-.info {
+.breakdown {
+    color: #ff5c69;
+    font-weight: bold;
+}
 
-    display: flex;
-
-    gap: 20px;
-
-    flex-wrap: wrap;
-
-    margin: 15px 0;
-
-    color: #c9d2de;
+.loading {
+    padding: 30px;
+    color: #ffd166;
 }
 
 .error {
-
     color: #ff5c69;
-
     font-weight: bold;
+    padding: 20px;
 }
 
 @media(max-width:600px) {
 
     .container {
-
         padding: 10px;
     }
 
     h1 {
-
         font-size: 22px;
     }
 
     button {
-
         width: 100%;
     }
 
+    .info-box {
+        width: 100%;
+    }
 }
 
 </style>
-
 </head>
-
 
 <body>
 
-
 <div class="container">
 
+    <h1>📊 Mahid Scanner</h1>
 
-<h1>📊 Mahid Scanner</h1>
+    <div class="subtitle">
+        NSE Next-Session Movement Scanner
+    </div>
 
+    <div class="controls">
 
-<div class="subtitle">
+        <button
+            id="scanBtn"
+            onclick="startScan()"
+        >
+            🔍 Scan Full NSE
+        </button>
 
-NSE Next-Session Movement Scanner
+    </div>
 
-</div>
+    <div
+        id="status"
+        class="status"
+    >
+        Ready to scan
+    </div>
 
+    <div class="info">
 
-<div class="controls">
+        <div class="info-box">
+            Market:
+            <strong>NSE</strong>
+        </div>
 
-<button
-    id="scanBtn"
-    onclick="scanMarket()"
->
-    🔍 Scan Full NSE
-</button>
+        <div class="info-box">
+            Selected:
+            <strong id="finalCount">—</strong>
+        </div>
 
-</div>
+        <div class="info-box">
+            Updated:
+            <strong id="updated">—</strong>
+        </div>
 
+    </div>
 
-<div id="status" class="status">
+    <div class="table-wrap">
 
-Ready to scan
+        <table>
 
-</div>
+            <thead>
 
+                <tr>
+                    <th>Rank</th>
+                    <th>Stock</th>
+                    <th>Price</th>
+                    <th>Setup</th>
+                    <th>Total Score</th>
+                    <th>5D Change</th>
+                    <th>Volume</th>
+                    <th>ATR %</th>
+                    <th>Support</th>
+                    <th>Resistance</th>
+                    <th>5M Support</th>
+                    <th>5M Resistance</th>
+                    <th>5M Volume</th>
+                    <th>Reason</th>
+                </tr>
 
-<div class="info">
+            </thead>
 
-<div>
-    NSE Scanned:
-    <strong id="universe">—</strong>
-</div>
+            <tbody id="stockTable">
 
-<div>
-    Candidates:
-    <strong id="candidates">—</strong>
-</div>
+                <tr>
+                    <td colspan="14">
+                        Scan Full NSE to find strong setups.
+                    </td>
+                </tr>
 
-<div>
-    Final:
-    <strong id="finalCount">—</strong>
-</div>
+            </tbody>
 
-</div>
+        </table>
 
-
-<div class="table-wrap">
-
-
-<table>
-
-
-<thead>
-
-<tr>
-
-<th>Rank</th>
-
-<th>Stock</th>
-
-<th>Price</th>
-
-<th>Direction</th>
-
-<th>Score</th>
-
-<th>Day Change</th>
-
-<th>Volume Ratio</th>
-
-<th>ATR %</th>
-
-<th>Support</th>
-
-<th>Resistance</th>
-
-<th>5M Support</th>
-
-<th>5M Resistance</th>
-
-<th>Confirmation</th>
-
-<th>Reason</th>
-
-</tr>
-
-</thead>
-
-
-<tbody id="stockTable">
-
-</tbody>
-
-
-</table>
-
-
-</div>
-
+    </div>
 
 </div>
 
 
 <script>
 
-
 const API_URL =
     "https://mahid-stock-scanner-api.onrender.com";
 
-
-let scanning = false;
-
-
-function formatPrice(value) {
-
-    if (
-        value === null ||
-        value === undefined
-    ) {
-
-        return "—";
-
-    }
-
-    return "₹" +
-        Number(value).toFixed(2);
-}
+let polling = false;
+let timer = null;
 
 
-function formatNumber(value) {
+/* =========================
+   FORMAT PRICE
+========================= */
+
+function price(value) {
 
     if (
         value === null ||
         value === undefined
     ) {
-
         return "—";
-
     }
 
-    return Number(value)
-        .toLocaleString("en-IN");
+    return "₹" + Number(value).toFixed(2);
 }
 
 
-function directionClass(direction) {
+/* =========================
+   FORMAT NUMBER
+========================= */
 
-    if (direction === "UP") {
+function number(value) {
 
-        return "green";
-
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return "—";
     }
 
-    if (direction === "DOWN") {
-
-        return "red";
-
-    }
-
-    return "yellow";
+    return Number(value).toLocaleString("en-IN");
 }
 
 
-async function scanMarket() {
+/* =========================
+   START SCAN
+========================= */
 
+async function startScan() {
 
-    if (scanning) {
-
+    if (polling) {
         return;
-
     }
 
-
-    scanning = true;
-
+    polling = true;
 
     const button =
-        document.getElementById(
-            "scanBtn"
-        );
+        document.getElementById("scanBtn");
 
+    const table =
+        document.getElementById("stockTable");
+
+    const status =
+        document.getElementById("status");
+
+    button.disabled = true;
+
+    button.innerText =
+        "⏳ Starting...";
+
+    table.innerHTML = `
+        <tr>
+            <td colspan="14" class="loading">
+                🔍 NSE scan started...
+                <br><br>
+                Please wait.
+            </td>
+        </tr>
+    `;
+
+    status.innerText =
+        "Scanning NSE stocks...";
+
+    try {
+
+        const response =
+            await fetch(
+                API_URL + "/api/scan"
+            );
+
+        const data =
+            await response.json();
+
+        if (
+            data.status !== "scanning"
+        ) {
+
+            throw new Error(
+                data.message ||
+                "Unable to start scanner"
+            );
+
+        }
+
+        status.innerText =
+            "🔄 NSE scan running...";
+
+        button.innerText =
+            "⏳ Scanning...";
+
+        /*
+            Check status every 5 seconds
+        */
+
+        checkStatus();
+
+        timer =
+            setInterval(
+                checkStatus,
+                5000
+            );
+
+    } catch (error) {
+
+        showError(error.message);
+
+        polling = false;
+
+        button.disabled = false;
+
+        button.innerText =
+            "🔍 Scan Full NSE";
+    }
+}
+
+
+/* =========================
+   CHECK SCAN STATUS
+========================= */
+
+async function checkStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                API_URL +
+                "/api/scan/status"
+            );
+
+        const data =
+            await response.json();
+
+        const status =
+            document.getElementById(
+                "status"
+            );
+
+        const button =
+            document.getElementById(
+                "scanBtn"
+            );
+
+        /*
+            SCANNING
+        */
+
+        if (
+            data.status ===
+            "scanning"
+        ) {
+
+            status.innerText =
+                "🔄 " +
+                data.message;
+
+            return;
+        }
+
+
+        /*
+            COMPLETE
+        */
+
+        if (
+            data.status ===
+            "complete"
+        ) {
+
+            clearInterval(timer);
+
+            polling = false;
+
+            button.disabled = false;
+
+            button.innerText =
+                "🔍 Scan Full NSE";
+
+            showResults(data);
+
+            return;
+        }
+
+
+        /*
+            ERROR
+        */
+
+        if (
+            data.status ===
+            "error"
+        ) {
+
+            clearInterval(timer);
+
+            polling = false;
+
+            button.disabled = false;
+
+            button.innerText =
+                "🔍 Scan Full NSE";
+
+            showError(
+                data.message ||
+                "Scanner error"
+            );
+
+            return;
+        }
+
+    } catch (error) {
+
+        console.log(
+            "Status check:",
+            error
+        );
+    }
+}
+
+
+/* =========================
+   SHOW RESULTS
+========================= */
+
+function showResults(data) {
 
     const table =
         document.getElementById(
             "stockTable"
         );
 
+    const status =
+        document.getElementById(
+            "status"
+        );
+
+    const finalCount =
+        document.getElementById(
+            "finalCount"
+        );
+
+    const updated =
+        document.getElementById(
+            "updated"
+        );
+
+
+    const results =
+        data.results || [];
+
+
+    finalCount.innerText =
+        results.length;
+
+
+    updated.innerText =
+        data.updated || "—";
+
+
+    if (
+        results.length === 0
+    ) {
+
+        table.innerHTML = `
+            <tr>
+                <td
+                    colspan="14"
+                    class="yellow"
+                >
+                    No strong setup found.
+                </td>
+            </tr>
+        `;
+
+        status.innerText =
+            "Scan complete • No strong setup";
+
+        return;
+    }
+
+
+    table.innerHTML = "";
+
+
+    results.forEach(
+        (stock, index) => {
+
+            const row =
+                document.createElement("tr");
+
+
+            let setupClass =
+                "yellow";
+
+
+            if (
+                stock.setup ===
+                "BREAKOUT"
+            ) {
+                setupClass =
+                    "breakout";
+            }
+
+
+            if (
+                stock.setup ===
+                "BREAKDOWN"
+            ) {
+                setupClass =
+                    "breakdown";
+            }
+
+
+            const changeClass =
+                Number(
+                    stock.change_5d
+                ) >= 0
+                ? "green"
+                : "red";
+
+
+            const volumeClass =
+                Number(
+                    stock.volume_ratio_5m
+                ) >= 1.5
+                ? "green"
+                : "yellow";
+
+
+            row.innerHTML = `
+
+                <td>
+                    <strong>
+                        #${index + 1}
+                    </strong>
+                </td>
+
+
+                <td class="stock">
+                    ${stock.symbol}
+                </td>
+
+
+                <td>
+                    ${price(
+                        stock.price_5m ??
+                        stock.price
+                    )}
+                </td>
+
+
+                <td class="${setupClass}">
+                    ${stock.setup || "WATCH"}
+                </td>
+
+
+                <td class="blue">
+                    ${stock.total_score ?? "—"}
+                </td>
+
+
+                <td class="${changeClass}">
+                    ${
+                        stock.change_5d !==
+                        undefined
+                        ? Number(
+                            stock.change_5d
+                          ).toFixed(2) + "%"
+                        : "—"
+                    }
+                </td>
+
+
+                <td class="${volumeClass}">
+                    ${
+                        stock.volume_ratio_5m !==
+                        undefined
+                        ? Number(
+                            stock.volume_ratio_5m
+                          ).toFixed(2) + "x"
+                        : "—"
+                    }
+                </td>
+
+
+                <td>
+                    ${
+                        stock.atr_percent !==
+                        undefined
+                        ? Number(
+                            stock.atr_percent
+                          ).toFixed(2) + "%"
+                        : "—"
+                    }
+                </td>
+
+
+                <td>
+                    ${price(
+                        stock.support
+                    )}
+                </td>
+
+
+                <td>
+                    ${price(
+                        stock.resistance
+                    )}
+                </td>
+
+
+                <td>
+                    ${price(
+                        stock.support_5m
+                    )}
+                </td>
+
+
+                <td>
+                    ${price(
+                        stock.resistance_5m
+                    )}
+                </td>
+
+
+                <td class="${
+                    Number(
+                        stock.volume_ratio_5m
+                    ) >= 1.5
+                    ? "green"
+                    : "yellow"
+                }">
+
+                    ${
+                        stock.volume_ratio_5m !==
+                        undefined
+                        ? Number(
+                            stock.volume_ratio_5m
+                          ).toFixed(2) + "x"
+                        : "—"
+                    }
+
+                </td>
+
+
+                <td class="reason">
+                    ${stock.reason || "—"}
+                </td>
+
+            `;
+
+
+            table.appendChild(row);
+
+        }
+    );
+
+
+    status.innerText =
+        "✅ Scan complete • " +
+        results.length +
+        " strong stock(s) found";
+}
+
+
+/* =========================
+   ERROR
+========================= */
+
+function showError(message) {
+
+    const table =
+        document.getElementById(
+            "stockTable"
+        );
 
     const status =
         document.getElementById(
             "status"
         );
 
-
-    button.disabled = true;
-
-
-    button.innerText =
-        "⏳ Scanning NSE...";
-
-
     table.innerHTML = `
 
         <tr>
 
-            <td colspan="14">
+            <td
+                colspan="14"
+                class="error"
+            >
 
-                Scanning full NSE universe...
-
-                <br><br>
-
-                Please wait.
+                Scanner error:
+                ${message}
 
             </td>
 
@@ -468,300 +790,11 @@ async function scanMarket() {
 
     `;
 
-
     status.innerText =
-        "Scanning NSE stocks. This can take some time...";
-
-
-    try {
-
-
-        const response =
-            await fetch(
-                API_URL +
-                "/api/scan"
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            data.status !==
-            "success"
-        ) {
-
-            throw new Error(
-                data.message ||
-                "Scanner error"
-            );
-
-        }
-
-
-        document.getElementById(
-            "universe"
-        ).innerText =
-            formatNumber(
-                data.universe_scanned
-            );
-
-
-        document.getElementById(
-            "candidates"
-        ).innerText =
-            formatNumber(
-                data.technical_candidates
-            );
-
-
-        document.getElementById(
-            "finalCount"
-        ).innerText =
-            formatNumber(
-                data.final_count
-            );
-
-
-        table.innerHTML = "";
-
-
-        if (
-            !data.stocks ||
-            data.stocks.length === 0
-        ) {
-
-            table.innerHTML = `
-
-                <tr>
-
-                    <td
-                        colspan="14"
-                        class="yellow"
-                    >
-
-                        No strong next-session
-                        setup found.
-
-                    </td>
-
-                </tr>
-
-            `;
-
-            status.innerText =
-                "Scan complete • No strong setup";
-
-            return;
-
-        }
-
-
-        data.stocks.forEach(
-            (stock, index) => {
-
-
-                const row =
-                    document.createElement(
-                        "tr"
-                    );
-
-
-                const reason =
-                    stock.reasons
-                    ? stock.reasons.join(
-                        " • "
-                    )
-                    : "—";
-
-
-                row.innerHTML = `
-
-                    <td>
-                        <strong>
-                            #${index + 1}
-                        </strong>
-                    </td>
-
-
-                    <td class="stock">
-                        ${stock.symbol}
-                    </td>
-
-
-                    <td>
-                        ${formatPrice(
-                            stock.price
-                        )}
-                    </td>
-
-
-                    <td class="${directionClass(
-                        stock.direction
-                    )}">
-                        ${stock.direction}
-                    </td>
-
-
-                    <td class="blue">
-                        ${stock.score}
-                    </td>
-
-
-                    <td class="${
-                        Number(
-                            stock.change_percent
-                        ) >= 0
-                        ? "green"
-                        : "red"
-                    }">
-
-                        ${
-                            Number(
-                                stock.change_percent
-                            ).toFixed(2)
-                        }%
-
-                    </td>
-
-
-                    <td class="${
-                        Number(
-                            stock.volume_ratio
-                        ) >= 1.5
-                        ? "green"
-                        : "yellow"
-                    }">
-
-                        ${
-                            Number(
-                                stock.volume_ratio
-                            ).toFixed(2)
-                        }x
-
-                    </td>
-
-
-                    <td>
-                        ${Number(
-                            stock.atr_percent
-                        ).toFixed(2)}%
-                    </td>
-
-
-                    <td>
-                        ${formatPrice(
-                            stock.support
-                        )}
-                    </td>
-
-
-                    <td>
-                        ${formatPrice(
-                            stock.resistance
-                        )}
-                    </td>
-
-
-                    <td>
-                        ${formatPrice(
-                            stock.support_5m
-                        )}
-                    </td>
-
-
-                    <td>
-                        ${formatPrice(
-                            stock.resistance_5m
-                        )}
-                    </td>
-
-
-                    <td class="${
-                        stock.confirmation &&
-                        stock.confirmation
-                        .includes("confirmation")
-                        ? "green"
-                        : "yellow"
-                    }">
-
-                        ${
-                            stock.confirmation
-                            || "Pending"
-                        }
-
-                    </td>
-
-
-                    <td class="reason">
-
-                        ${reason}
-
-                    </td>
-
-                `;
-
-
-                table.appendChild(
-                    row
-                );
-
-            }
-        );
-
-
-        status.innerText =
-            "✅ Scan complete • " +
-            data.final_count +
-            " strong candidate(s) found";
-
-
-    } catch (error) {
-
-
-        table.innerHTML = `
-
-            <tr>
-
-                <td
-                    colspan="14"
-                    class="error"
-                >
-
-                    Scanner connection error:
-
-                    ${error.message}
-
-                </td>
-
-            </tr>
-
-        `;
-
-
-        status.innerText =
-            "Scanner error";
-
-
-    } finally {
-
-
-        button.disabled = false;
-
-
-        button.innerText =
-            "🔍 Scan Full NSE";
-
-
-        scanning = false;
-
-    }
-
+        "❌ Scanner error";
 }
 
 </script>
-
 
 </body>
 
