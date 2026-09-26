@@ -1,685 +1,768 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
 <title>Mahid Scanner</title>
 
 <style>
+
 * {
     box-sizing: border-box;
 }
 
 body {
+
     margin: 0;
+
     font-family: Arial, sans-serif;
+
     background: #0b0f14;
-    color: #ffffff;
+
+    color: white;
 }
 
 .container {
+
     width: 100%;
+
     max-width: 1600px;
+
     margin: auto;
+
     padding: 15px;
 }
 
 h1 {
-    margin: 0 0 5px 0;
+
+    margin: 0;
+
     font-size: 26px;
 }
 
 .subtitle {
+
     color: #9aa4b2;
-    margin-bottom: 15px;
+
+    margin: 5px 0 15px;
 }
 
 .controls {
+
     display: flex;
-    flex-wrap: wrap;
+
     gap: 10px;
+
+    flex-wrap: wrap;
+
     margin-bottom: 15px;
 }
 
-select,
-input,
 button {
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid #303844;
-    background: #151b23;
-    color: white;
-    font-size: 14px;
-}
 
-input {
-    min-width: 180px;
-}
+    padding: 11px 18px;
 
-button {
-    background: #1d7cff;
     border: none;
-    cursor: pointer;
+
+    border-radius: 8px;
+
+    background: #1d7cff;
+
+    color: white;
+
     font-weight: bold;
+
+    cursor: pointer;
 }
 
 button:disabled {
-    opacity: 0.6;
+
+    opacity: .5;
+
     cursor: not-allowed;
 }
 
 .status {
+
     margin: 10px 0;
+
     color: #9aa4b2;
 }
 
 .table-wrap {
+
     width: 100%;
+
     overflow-x: auto;
+
     border: 1px solid #252d38;
+
     border-radius: 10px;
 }
 
 table {
+
     width: 100%;
-    min-width: 1350px;
+
+    min-width: 1200px;
+
     border-collapse: collapse;
 }
 
 th,
 td {
-    padding: 11px 10px;
+
+    padding: 12px 10px;
+
     border-bottom: 1px solid #252d38;
+
     text-align: center;
+
     white-space: nowrap;
 }
 
 th {
+
     background: #151b23;
+
     color: #dce3ec;
-    font-size: 13px;
+
     position: sticky;
+
     top: 0;
 }
 
-td {
-    font-size: 13px;
-}
-
 .stock {
+
     font-weight: bold;
+
+    font-size: 15px;
 }
 
 .green {
+
     color: #35d07f;
+
     font-weight: bold;
 }
 
 .red {
+
     color: #ff5c69;
+
     font-weight: bold;
 }
 
 .yellow {
+
     color: #ffd166;
+
     font-weight: bold;
 }
 
 .blue {
+
     color: #55aaff;
+
     font-weight: bold;
 }
 
 .reason {
+
     white-space: normal;
-    min-width: 250px;
-    max-width: 320px;
+
+    min-width: 300px;
+
+    max-width: 450px;
+
+    text-align: left;
+
     color: #c9d2de;
 }
 
-.live {
-    color: #35d07f;
-    font-weight: bold;
+.badge {
+
+    padding: 5px 9px;
+
+    border-radius: 6px;
+
+    background: #151b23;
+}
+
+.info {
+
+    display: flex;
+
+    gap: 20px;
+
+    flex-wrap: wrap;
+
+    margin: 15px 0;
+
+    color: #c9d2de;
 }
 
 .error {
+
     color: #ff5c69;
+
+    font-weight: bold;
 }
 
-@media (max-width: 600px) {
+@media(max-width:600px) {
+
     .container {
+
         padding: 10px;
     }
 
     h1 {
+
         font-size: 22px;
     }
 
-    .controls {
-        flex-direction: column;
-    }
-
-    select,
-    input,
     button {
+
         width: 100%;
     }
+
 }
+
 </style>
+
 </head>
+
 
 <body>
 
+
 <div class="container">
 
-    <h1>📊 Mahid Scanner</h1>
 
-    <div class="subtitle">
-        NSE Stock Scanner • Support / Resistance • Volume • Zone • Signals
-    </div>
+<h1>📊 Mahid Scanner</h1>
 
-    <div class="controls">
 
-        <select id="exchange">
-            <option value="NSE">NSE</option>
-            <option value="BSE">BSE</option>
-        </select>
+<div class="subtitle">
 
-        <select id="timeframe">
-            <option value="5m">5 Minute</option>
-            <option value="15m">15 Minute</option>
-            <option value="1d">Daily</option>
-        </select>
+NSE Next-Session Movement Scanner
 
-        <input
-            type="text"
-            id="search"
-            placeholder="Search stock..."
-        >
+</div>
 
-        <button id="scanBtn" onclick="scanStocks()">
-            🔍 Scan Stocks
-        </button>
 
-    </div>
+<div class="controls">
 
-    <div id="status" class="status">
-        Ready to scan
-    </div>
+<button
+    id="scanBtn"
+    onclick="scanMarket()"
+>
+    🔍 Scan Full NSE
+</button>
 
-    <div class="table-wrap">
+</div>
 
-        <table>
 
-            <thead>
-                <tr>
+<div id="status" class="status">
 
-                    <th>Stock</th>
+Ready to scan
 
-                    <th>Price</th>
+</div>
 
-                    <th>Day Support</th>
 
-                    <th>Day Resistance</th>
+<div class="info">
 
-                    <th>5M Support</th>
+<div>
+    NSE Scanned:
+    <strong id="universe">—</strong>
+</div>
 
-                    <th>5M Resistance</th>
+<div>
+    Candidates:
+    <strong id="candidates">—</strong>
+</div>
 
-                    <th>Zone</th>
+<div>
+    Final:
+    <strong id="finalCount">—</strong>
+</div>
 
-                    <th>Volume</th>
+</div>
 
-                    <th>Avg Volume</th>
 
-                    <th>Vol Ratio</th>
+<div class="table-wrap">
 
-                    <th>Candle</th>
 
-                    <th>Signal</th>
+<table>
 
-                    <th>Signal Reason</th>
 
-                    <th>Change</th>
+<thead>
 
-                    <th>Status</th>
+<tr>
 
-                </tr>
-            </thead>
+<th>Rank</th>
 
-            <tbody id="stockTable">
+<th>Stock</th>
 
-            </tbody>
+<th>Price</th>
 
-        </table>
+<th>Direction</th>
 
-    </div>
+<th>Score</th>
+
+<th>Day Change</th>
+
+<th>Volume Ratio</th>
+
+<th>ATR %</th>
+
+<th>Support</th>
+
+<th>Resistance</th>
+
+<th>5M Support</th>
+
+<th>5M Resistance</th>
+
+<th>Confirmation</th>
+
+<th>Reason</th>
+
+</tr>
+
+</thead>
+
+
+<tbody id="stockTable">
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
 
 </div>
 
 
 <script>
 
-const API_URL =
-    "https://mahid-stock-scanner-api.onrender.com/api/stock/";
 
-const stocks = [
-    "RELIANCE",
-    "TCS",
-    "INFY",
-    "HDFCBANK",
-    "ICICIBANK",
-    "SBIN",
-    "BHARTIARTL",
-    "ITC",
-    "LT",
-    "AXISBANK",
-    "KOTAKBANK",
-    "HINDUNILVR"
-];
+const API_URL =
+    "https://mahid-stock-scanner-api.onrender.com";
+
 
 let scanning = false;
 
 
-// --------------------------------------------------
-// FORMAT NUMBER
-// --------------------------------------------------
+function formatPrice(value) {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+
+        return "—";
+
+    }
+
+    return "₹" +
+        Number(value).toFixed(2);
+}
+
 
 function formatNumber(value) {
 
-    if (value === null || value === undefined) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
+
         return "—";
+
     }
 
-    return Number(value).toLocaleString("en-IN");
+    return Number(value)
+        .toLocaleString("en-IN");
 }
 
 
-// --------------------------------------------------
-// FORMAT PRICE
-// --------------------------------------------------
+function directionClass(direction) {
 
-function formatPrice(value) {
+    if (direction === "UP") {
 
-    if (value === null || value === undefined) {
-        return "₹—";
-    }
-
-    return "₹" + Number(value).toFixed(2);
-}
-
-
-// --------------------------------------------------
-// SIGNAL CLASS
-// --------------------------------------------------
-
-function signalClass(signal) {
-
-    if (signal === "BUY AREA") {
         return "green";
+
     }
 
-    if (signal === "SELL AREA") {
+    if (direction === "DOWN") {
+
         return "red";
+
     }
 
     return "yellow";
 }
 
 
-// --------------------------------------------------
-// ZONE CLASS
-// --------------------------------------------------
+async function scanMarket() {
 
-function zoneClass(zone) {
-
-    if (zone === "Discount Zone") {
-        return "green";
-    }
-
-    if (zone === "Premium Zone") {
-        return "red";
-    }
-
-    return "yellow";
-}
-
-
-// --------------------------------------------------
-// CANDLE CLASS
-// --------------------------------------------------
-
-function candleClass(candle) {
-
-    if (candle === "BULLISH") {
-        return "green";
-    }
-
-    if (candle === "BEARISH") {
-        return "red";
-    }
-
-    return "yellow";
-}
-
-
-// --------------------------------------------------
-// SCAN STOCKS
-// --------------------------------------------------
-
-async function scanStocks() {
 
     if (scanning) {
+
         return;
+
     }
+
 
     scanning = true;
 
+
     const button =
-        document.getElementById("scanBtn");
+        document.getElementById(
+            "scanBtn"
+        );
+
 
     const table =
-        document.getElementById("stockTable");
+        document.getElementById(
+            "stockTable"
+        );
+
 
     const status =
-        document.getElementById("status");
+        document.getElementById(
+            "status"
+        );
+
 
     button.disabled = true;
 
-    button.innerText = "Scanning...";
 
-    table.innerHTML = "";
+    button.innerText =
+        "⏳ Scanning NSE...";
+
+
+    table.innerHTML = `
+
+        <tr>
+
+            <td colspan="14">
+
+                Scanning full NSE universe...
+
+                <br><br>
+
+                Please wait.
+
+            </td>
+
+        </tr>
+
+    `;
+
 
     status.innerText =
-        "Scanning 12 stocks...";
+        "Scanning NSE stocks. This can take some time...";
 
 
-    for (const symbol of stocks) {
-
-        // Create loading row
-
-        const row =
-            document.createElement("tr");
-
-        row.id =
-            "row-" + symbol;
-
-        row.innerHTML = `
-
-            <td class="stock">
-                ${symbol}
-            </td>
-
-            <td>Loading...</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>—</td>
-
-            <td>WAIT</td>
-
-            <td class="reason">
-                Loading...
-            </td>
-
-            <td>—</td>
-
-            <td>Loading</td>
-
-        `;
-
-        table.appendChild(row);
+    try {
 
 
-        try {
-
-            const response =
-                await fetch(
-                    API_URL +
-                    encodeURIComponent(symbol)
-                );
+        const response =
+            await fetch(
+                API_URL +
+                "/api/scan"
+            );
 
 
-            const data =
-                await response.json();
+        const data =
+            await response.json();
 
 
-            if (data.status !== "success") {
+        if (
+            data.status !==
+            "success"
+        ) {
+
+            throw new Error(
+                data.message ||
+                "Scanner error"
+            );
+
+        }
+
+
+        document.getElementById(
+            "universe"
+        ).innerText =
+            formatNumber(
+                data.universe_scanned
+            );
+
+
+        document.getElementById(
+            "candidates"
+        ).innerText =
+            formatNumber(
+                data.technical_candidates
+            );
+
+
+        document.getElementById(
+            "finalCount"
+        ).innerText =
+            formatNumber(
+                data.final_count
+            );
+
+
+        table.innerHTML = "";
+
+
+        if (
+            !data.stocks ||
+            data.stocks.length === 0
+        ) {
+
+            table.innerHTML = `
+
+                <tr>
+
+                    <td
+                        colspan="14"
+                        class="yellow"
+                    >
+
+                        No strong next-session
+                        setup found.
+
+                    </td>
+
+                </tr>
+
+            `;
+
+            status.innerText =
+                "Scan complete • No strong setup";
+
+            return;
+
+        }
+
+
+        data.stocks.forEach(
+            (stock, index) => {
+
+
+                const row =
+                    document.createElement(
+                        "tr"
+                    );
+
+
+                const reason =
+                    stock.reasons
+                    ? stock.reasons.join(
+                        " • "
+                    )
+                    : "—";
+
 
                 row.innerHTML = `
 
+                    <td>
+                        <strong>
+                            #${index + 1}
+                        </strong>
+                    </td>
+
+
                     <td class="stock">
-                        ${symbol}
+                        ${stock.symbol}
                     </td>
 
-                    <td colspan="13"
-                        class="error">
-                        ${data.message || "Data error"}
+
+                    <td>
+                        ${formatPrice(
+                            stock.price
+                        )}
                     </td>
 
-                    <td class="error">
-                        ERROR
+
+                    <td class="${directionClass(
+                        stock.direction
+                    )}">
+                        ${stock.direction}
+                    </td>
+
+
+                    <td class="blue">
+                        ${stock.score}
+                    </td>
+
+
+                    <td class="${
+                        Number(
+                            stock.change_percent
+                        ) >= 0
+                        ? "green"
+                        : "red"
+                    }">
+
+                        ${
+                            Number(
+                                stock.change_percent
+                            ).toFixed(2)
+                        }%
+
+                    </td>
+
+
+                    <td class="${
+                        Number(
+                            stock.volume_ratio
+                        ) >= 1.5
+                        ? "green"
+                        : "yellow"
+                    }">
+
+                        ${
+                            Number(
+                                stock.volume_ratio
+                            ).toFixed(2)
+                        }x
+
+                    </td>
+
+
+                    <td>
+                        ${Number(
+                            stock.atr_percent
+                        ).toFixed(2)}%
+                    </td>
+
+
+                    <td>
+                        ${formatPrice(
+                            stock.support
+                        )}
+                    </td>
+
+
+                    <td>
+                        ${formatPrice(
+                            stock.resistance
+                        )}
+                    </td>
+
+
+                    <td>
+                        ${formatPrice(
+                            stock.support_5m
+                        )}
+                    </td>
+
+
+                    <td>
+                        ${formatPrice(
+                            stock.resistance_5m
+                        )}
+                    </td>
+
+
+                    <td class="${
+                        stock.confirmation &&
+                        stock.confirmation
+                        .includes("confirmation")
+                        ? "green"
+                        : "yellow"
+                    }">
+
+                        ${
+                            stock.confirmation
+                            || "Pending"
+                        }
+
+                    </td>
+
+
+                    <td class="reason">
+
+                        ${reason}
+
                     </td>
 
                 `;
 
-                continue;
+
+                table.appendChild(
+                    row
+                );
+
             }
+        );
 
 
-            const signal =
-                data.signal || "WAIT";
-
-            const zone =
-                data.zone || "—";
-
-            const candle =
-                data.candle || "—";
+        status.innerText =
+            "✅ Scan complete • " +
+            data.final_count +
+            " strong candidate(s) found";
 
 
-            row.innerHTML = `
-
-                <td class="stock">
-                    ${data.symbol || symbol}
-                </td>
+    } catch (error) {
 
 
-                <td>
-                    ${formatPrice(data.price)}
-                </td>
+        table.innerHTML = `
 
+            <tr>
 
-                <td>
-                    ${formatPrice(data.major_support)}
-                </td>
+                <td
+                    colspan="14"
+                    class="error"
+                >
 
+                    Scanner connection error:
 
-                <td>
-                    ${formatPrice(data.major_resistance)}
-                </td>
-
-
-                <td>
-                    ${formatPrice(data.support_5m)}
-                </td>
-
-
-                <td>
-                    ${formatPrice(data.resistance_5m)}
-                </td>
-
-
-                <td class="${zoneClass(zone)}">
-                    ${zone}
-                </td>
-
-
-                <td>
-                    ${formatNumber(data.volume)}
-                </td>
-
-
-                <td>
-                    ${formatNumber(data.average_volume)}
-                </td>
-
-
-                <td class="${
-                    Number(data.volume_ratio) >= 1.5
-                    ? "green"
-                    : "yellow"
-                }">
-                    ${
-                        data.volume_ratio !== null &&
-                        data.volume_ratio !== undefined
-                        ? Number(data.volume_ratio).toFixed(2) + "x"
-                        : "—"
-                    }
-                </td>
-
-
-                <td class="${candleClass(candle)}">
-                    ${candle}
-                </td>
-
-
-                <td class="${signalClass(signal)}">
-                    ${signal}
-                </td>
-
-
-                <td class="reason">
-                    ${data.signal_reason || "No confirmed setup"}
-                </td>
-
-
-                <td class="${
-                    Number(data.change) >= 0
-                    ? "green"
-                    : "red"
-                }">
-
-                    ${
-                        data.change !== null &&
-                        data.change !== undefined
-                        ? formatPrice(data.change) +
-                          " (" +
-                          Number(data.change_percent).toFixed(2) +
-                          "%)"
-                        : "—"
-                    }
+                    ${error.message}
 
                 </td>
 
+            </tr>
 
-                <td class="live">
-                    LIVE
-                </td>
-
-            `;
+        `;
 
 
-        } catch (error) {
+        status.innerText =
+            "Scanner error";
 
-            row.innerHTML = `
 
-                <td class="stock">
-                    ${symbol}
-                </td>
+    } finally {
 
-                <td colspan="13"
-                    class="error">
-                    Connection error
-                </td>
 
-                <td class="error">
-                    ERROR
-                </td>
+        button.disabled = false;
 
-            `;
 
-        }
+        button.innerText =
+            "🔍 Scan Full NSE";
+
+
+        scanning = false;
 
     }
 
-
-    status.innerText =
-        "Scan complete • 12 stocks checked";
-
-
-    button.disabled = false;
-
-    button.innerText =
-        "🔍 Scan Stocks";
-
-    scanning = false;
-
 }
-
-
-// --------------------------------------------------
-// SEARCH
-// --------------------------------------------------
-
-document
-    .getElementById("search")
-    .addEventListener(
-        "input",
-        function () {
-
-            const search =
-                this.value
-                .toUpperCase()
-                .trim();
-
-
-            const rows =
-                document.querySelectorAll(
-                    "#stockTable tr"
-                );
-
-
-            rows.forEach(row => {
-
-                const stock =
-                    row
-                    .querySelector(".stock");
-
-                if (!stock) {
-                    return;
-                }
-
-                const symbol =
-                    stock.innerText
-                    .toUpperCase();
-
-
-                row.style.display =
-                    symbol.includes(search)
-                    ? ""
-                    : "none";
-
-            });
-
-        }
-    );
 
 </script>
 
+
 </body>
+
 </html>
