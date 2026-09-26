@@ -5,810 +5,519 @@ import pandas as pd
 import numpy as np
 import requests
 import io
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import time
 
 app = Flask(__name__)
 CORS(app)
 
-NSE_LIST_URL = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
+# =========================
+# SETTINGS
+# =========================
+BATCH_SIZE = 50
+SHORTLIST_SIZE = 20
+FINAL_SIZE = 5
+
+scan_lock = threading.Lock()
+
+SCAN = {
+    "status": "idle",
+    "message": "Scanner ready",
+    "results": [],
+    "updated": None
+}
 
 
-# =========================================================
-# HOME
-# =========================================================
-
-@app.route("/")
-def home():
-    return jsonify({
-        "status": "success",
-        "message": "Mahid Scanner is running",
-        "data_api": "/api/stock/RELIANCE",
-        "scanner_api": "/api/scan"
-    })
-
-
-# =========================================================
-# NSE STOCK LIST
-# =========================================================
-
+# =========================
+# NSE SYMBOL LIST
+# =========================
 def get_nse_symbols():
+    url = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
 
     headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 Chrome/120 Safari/537.36"
-        )
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "text/csv,application/csv,text/plain,*/*",
+        "Referer": "https://www.nseindia.com/"
     }
 
     try:
+        r = requests.get(url, headers=headers, timeout=20)
 
-        response = requests.get(
-            NSE_LIST_URL,
-            headers=headers,
-            timeout=20
-        )
+        if r.status_code != 200:
+            return []
 
-        response.raise_for_status()
+        df = pd.read_csv(io.BytesIO(r.content))
 
-        df = pd.read_csv(
-            io.StringIO(response.text)
-        )
+        df.columns = [str(c).strip().upper() for c in df.columns]
 
         if "SYMBOL" not in df.columns:
             return []
 
-        symbols = []
+        symbols = df["SYMBOL"].dropna().astype(str).str.strip().tolist()
 
-        for _, row in df.iterrows():
+        # Remove unwanted symbols
+        symbols = [
+            s for s in symbols
+            if s and not any(x in s for x in ["-", "&"])
+        ]
 
-            symbol = str(
-                row["SYMBOL"]
-            ).strip().upper()
-
-            series = str(
-                row.get(" SERIES", row.get("SERIES", "EQ"))
-            ).strip().upper()
-
-            if (
-                symbol
-                and symbol != "NAN"
-                and series == "EQ"
-            ):
-                symbols.append(symbol)
-
-        return sorted(
-            list(set(symbols))
-        )
+        return list(dict.fromkeys(symbols))
 
     except Exception:
-
         return []
 
 
-# =========================================================
-# SAFE NUMBER
-# =========================================================
+# =========================
+# DAILY BATCH DOWNLOAD
+# =========================
+def download_daily(symbols):
 
-def safe_float(value):
+    tickers = [s + ".NS" for s in symbols]
 
     try:
+        data = yf.download(
+            tickers=tickers,
+            period="3mo",
+            interval="1d",
+            auto_adjust=False,
+            group_by="ticker",
+            threads=False,
+            progress=False,
+            timeout=20
+        )
 
-        if pd.isna(value):
-            return None
-
-        return float(value)
+        return data
 
     except Exception:
+        return pd.DataFrame()
 
-        return None
 
-
-# =========================================================
-# DAILY ANALYSIS
-# =========================================================
-
-def analyze_daily(symbol):
+# =========================
+# ANALYZE ONE STOCK
+# =========================
+def analyze_stock(symbol, data):
 
     try:
 
         ticker = symbol + ".NS"
 
-        data = yf.download(
-            ticker,
-            period="6mo",
-            interval="1d",
-            auto_adjust=False,
-            progress=False,
-            threads=False
-        )
-
-        if data is None or data.empty:
+        if data.empty:
             return None
 
         if isinstance(data.columns, pd.MultiIndex):
-            data.columns = data.columns.get_level_values(0)
 
-        required = [
-            "Open",
-            "High",
-            "Low",
-            "Close",
-            "Volume"
-        ]
-
-        for col in required:
-
-            if col not in data.columns:
+            if ticker not in data.columns.get_level_values(0):
                 return None
 
-        data = data.dropna(
-            subset=required
-        )
+            df = data[ticker].copy()
 
-        if len(data) < 60:
+        else:
+            df = data.copy()
+
+        if df.empty:
             return None
 
-        close = data["Close"]
-        high = data["High"]
-        low = data["Low"]
-        volume = data["Volume"]
+        df = df.dropna(subset=["Open", "High", "Low", "Close", "Volume"])
+
+        if len(df) < 30:
+            return None
+
+        close = df["Close"]
+        high = df["High"]
+        low = df["Low"]
+        volume = df["Volume"]
 
         price = float(close.iloc[-1])
 
-        previous_close = float(
-            close.iloc[-2]
-        )
-
-        day_change_pct = (
-            (price - previous_close)
-            / previous_close
-        ) * 100
-
-        # -------------------------------------------------
         # EMA
-        # -------------------------------------------------
+        ema20 = float(close.ewm(span=20).mean().iloc[-1])
+        ema50 = float(close.ewm(span=50).mean().iloc[-1])
 
-        ema20 = float(
-            close.ewm(
-                span=20,
-                adjust=False
-            ).mean().iloc[-1]
-        )
+        # Average volume
+        avg_volume = float(volume.iloc[-21:-1].mean())
 
-        ema50 = float(
-            close.ewm(
-                span=50,
-                adjust=False
-            ).mean().iloc[-1]
-        )
-
-        # -------------------------------------------------
-        # VOLUME
-        # -------------------------------------------------
-
-        avg_volume = float(
-            volume.iloc[-21:-1].mean()
-        )
-
-        current_volume = float(
-            volume.iloc[-1]
-        )
-
-        if avg_volume > 0:
-            volume_ratio = (
-                current_volume
-                / avg_volume
-            )
-        else:
-            volume_ratio = 1.0
-
-        # -------------------------------------------------
-        # 20 DAY RANGE
-        # -------------------------------------------------
-
-        recent20 = data.tail(20)
-
-        high20 = float(
-            recent20["High"].max()
-        )
-
-        low20 = float(
-            recent20["Low"].min()
-        )
-
-        range20 = high20 - low20
-
-        if range20 <= 0:
+        if avg_volume <= 0:
             return None
 
-        range_position = (
-            (price - low20)
-            / range20
-        )
+        volume_ratio = float(volume.iloc[-1] / avg_volume)
 
-        # -------------------------------------------------
+        # Previous 20 day high/low
+        previous_high = float(high.iloc[-21:-1].max())
+        previous_low = float(low.iloc[-21:-1].min())
+
         # ATR
-        # -------------------------------------------------
-
-        previous = close.shift(1)
+        prev_close = close.shift(1)
 
         tr1 = high - low
+        tr2 = abs(high - prev_close)
+        tr3 = abs(low - prev_close)
 
-        tr2 = abs(
-            high - previous
-        )
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
 
-        tr3 = abs(
-            low - previous
-        )
+        atr = float(tr.rolling(14).mean().iloc[-1])
 
-        true_range = pd.concat(
-            [tr1, tr2, tr3],
-            axis=1
-        ).max(axis=1)
+        if atr <= 0:
+            return None
 
-        atr14 = float(
-            true_range.rolling(14).mean().iloc[-1]
-        )
+        atr_percent = (atr / price) * 100
 
-        atr_percent = (
-            atr14 / price
-        ) * 100
+        # Candle
+        o = float(df["Open"].iloc[-1])
+        h = float(df["High"].iloc[-1])
+        l = float(df["Low"].iloc[-1])
+        c = float(df["Close"].iloc[-1])
 
-        # -------------------------------------------------
-        # BREAKOUT / BREAKDOWN
-        # -------------------------------------------------
+        bullish = c > o
+        bearish = c < o
 
-        previous_high20 = float(
-            data["High"].iloc[-21:-1].max()
-        )
+        body = abs(c - o)
+        candle_range = max(h - l, 0.01)
 
-        previous_low20 = float(
-            data["Low"].iloc[-21:-1].min()
-        )
+        strong_candle = (body / candle_range) >= 0.50
 
-        near_breakout = (
-            price >=
-            previous_high20 * 0.995
-        )
+        # Momentum
+        change_5d = ((price / float(close.iloc[-6])) - 1) * 100
 
-        near_breakdown = (
-            price <=
-            previous_low20 * 1.005
-        )
+        # Breakout / breakdown
+        breakout = price > previous_high
+        breakdown = price < previous_low
 
-        # -------------------------------------------------
-        # CANDLE
-        # -------------------------------------------------
+        score = 0
+        setup = "WATCH"
 
-        open_price = float(
-            data["Open"].iloc[-1]
-        )
-
-        candle_pct = (
-            (price - open_price)
-            / open_price
-        ) * 100
-
-        bullish = price > open_price
-        bearish = price < open_price
-
-        # -------------------------------------------------
-        # SUPPORT / RESISTANCE
-        # -------------------------------------------------
-
-        support = float(
-            data["Low"].tail(20).min()
-        )
-
-        resistance = float(
-            data["High"].tail(20).max()
-        )
-
-        support_distance = (
-            abs(price - support)
-            / price
-        )
-
-        resistance_distance = (
-            abs(price - resistance)
-            / price
-        )
-
-        # -------------------------------------------------
-        # SCORE
-        # -------------------------------------------------
-
-        up_score = 0
-        down_score = 0
-
-        up_reasons = []
-        down_reasons = []
+        reasons = []
 
         # Trend
         if price > ema20:
-            up_score += 10
-            up_reasons.append(
-                "Price above EMA20"
-            )
+            score += 10
+            reasons.append("Above EMA20")
 
-        if price > ema50:
-            up_score += 10
-            up_reasons.append(
-                "Price above EMA50"
-            )
-
-        if price < ema20:
-            down_score += 10
-            down_reasons.append(
-                "Price below EMA20"
-            )
-
-        if price < ema50:
-            down_score += 10
-            down_reasons.append(
-                "Price below EMA50"
-            )
-
-        # Momentum
-        if range_position >= 0.70:
-            up_score += 15
-            up_reasons.append(
-                "Strong upper-range position"
-            )
-
-        if range_position <= 0.30:
-            down_score += 15
-            down_reasons.append(
-                "Strong lower-range position"
-            )
+        if ema20 > ema50:
+            score += 10
+            reasons.append("EMA20 > EMA50")
 
         # Volume
         if volume_ratio >= 1.5:
-
-            if bullish:
-                up_score += 20
-                up_reasons.append(
-                    "Volume expansion"
-                )
-
-            elif bearish:
-                down_score += 20
-                down_reasons.append(
-                    "Volume expansion"
-                )
+            score += 15
+            reasons.append("Strong volume")
 
         elif volume_ratio >= 1.2:
-
-            if bullish:
-                up_score += 10
-
-            elif bearish:
-                down_score += 10
-
-        # Breakout
-        if near_breakout:
-
-            up_score += 25
-
-            up_reasons.append(
-                "Near 20-day breakout"
-            )
-
-        # Breakdown
-        if near_breakdown:
-
-            down_score += 25
-
-            down_reasons.append(
-                "Near 20-day breakdown"
-            )
-
-        # Candle
-        if bullish and candle_pct >= 0.5:
-
-            up_score += 10
-
-            up_reasons.append(
-                "Strong bullish candle"
-            )
-
-        if bearish and candle_pct <= -0.5:
-
-            down_score += 10
-
-            down_reasons.append(
-                "Strong bearish candle"
-            )
+            score += 8
 
         # Volatility
         if atr_percent >= 1.5:
+            score += 10
+            reasons.append("Good volatility")
 
-            if up_score >= down_score:
-                up_score += 5
-                up_reasons.append(
-                    "Good movement range"
-                )
-            else:
-                down_score += 5
-                down_reasons.append(
-                    "Good movement range"
-                )
+        elif atr_percent >= 1.0:
+            score += 5
 
-        # -------------------------------------------------
-        # DIRECTION
-        # -------------------------------------------------
+        # Momentum
+        if abs(change_5d) >= 2:
+            score += 10
+            reasons.append("Momentum")
 
-        if up_score > down_score:
+        # Breakout
+        if breakout:
+            score += 25
+            setup = "BREAKOUT"
+            reasons.append("20D breakout")
 
-            direction = "UP"
+        elif breakdown:
+            score += 25
+            setup = "BREAKDOWN"
+            reasons.append("20D breakdown")
 
-            score = up_score
+        # Candle
+        if strong_candle and bullish:
+            score += 10
+            reasons.append("Strong bullish candle")
 
-            reasons = up_reasons
+        elif strong_candle and bearish:
+            score += 10
+            reasons.append("Strong bearish candle")
 
-        elif down_score > up_score:
-
-            direction = "DOWN"
-
-            score = down_score
-
-            reasons = down_reasons
-
-        else:
-
-            direction = "NEUTRAL"
-
-            score = 0
-
-            reasons = []
-
-        # -------------------------------------------------
-        # MINIMUM QUALITY FILTER
-        # -------------------------------------------------
-
-        if score < 55:
-
+        # Only useful setups
+        if score < 50:
             return None
 
         return {
             "symbol": symbol,
             "price": round(price, 2),
-            "previous_close": round(
-                previous_close,
-                2
-            ),
-            "change_percent": round(
-                day_change_pct,
-                2
-            ),
-            "direction": direction,
             "score": int(score),
-            "volume_ratio": round(
-                volume_ratio,
-                2
+            "setup": setup,
+            "volume_ratio": round(volume_ratio, 2),
+            "atr_percent": round(atr_percent, 2),
+            "change_5d": round(change_5d, 2),
+            "ema20": round(ema20, 2),
+            "ema50": round(ema50, 2),
+            "support": round(previous_low, 2),
+            "resistance": round(previous_high, 2),
+            "candle": (
+                "BULLISH"
+                if bullish
+                else "BEARISH"
+                if bearish
+                else "NEUTRAL"
             ),
-            "atr_percent": round(
-                atr_percent,
-                2
-            ),
-            "support": round(
-                support,
-                2
-            ),
-            "resistance": round(
-                resistance,
-                2
-            ),
-            "ema20": round(
-                ema20,
-                2
-            ),
-            "ema50": round(
-                ema50,
-                2
-            ),
-            "reasons": reasons
+            "reason": ", ".join(reasons[:5])
         }
 
     except Exception:
-
         return None
 
 
-# =========================================================
-# 5 MINUTE CONFIRMATION
-# =========================================================
+# =========================
+# 5 MIN CONFIRMATION
+# =========================
+def confirm_5m(candidates):
 
-def confirm_5m(item):
+    if not candidates:
+        return []
+
+    symbols = [x["symbol"] for x in candidates]
+    tickers = [s + ".NS" for s in symbols]
 
     try:
 
-        symbol = item["symbol"]
-
-        ticker = yf.Ticker(
-            symbol + ".NS"
-        )
-
-        data = ticker.history(
+        data = yf.download(
+            tickers=tickers,
             period="5d",
-            interval="5m"
+            interval="5m",
+            auto_adjust=False,
+            group_by="ticker",
+            threads=False,
+            progress=False,
+            timeout=30
         )
-
-        if data is None or data.empty:
-            return item
-
-        data = data.dropna(
-            subset=[
-                "Open",
-                "High",
-                "Low",
-                "Close",
-                "Volume"
-            ]
-        )
-
-        if len(data) < 25:
-            return item
-
-        last = data.iloc[-1]
-
-        price = float(
-            last["Close"]
-        )
-
-        open_price = float(
-            last["Open"]
-        )
-
-        volume = float(
-            last["Volume"]
-        )
-
-        avg_volume = float(
-            data["Volume"]
-            .tail(21)
-            .iloc[:-1]
-            .mean()
-        )
-
-        if avg_volume > 0:
-
-            volume_ratio = (
-                volume
-                / avg_volume
-            )
-
-        else:
-
-            volume_ratio = 1.0
-
-        recent = data.tail(30)
-
-        support_5m = float(
-            recent["Low"].min()
-        )
-
-        resistance_5m = float(
-            recent["High"].max()
-        )
-
-        bullish = (
-            price > open_price
-        )
-
-        bearish = (
-            price < open_price
-        )
-
-        item["price"] = round(
-            price,
-            2
-        )
-
-        item["volume_ratio_5m"] = round(
-            volume_ratio,
-            2
-        )
-
-        item["support_5m"] = round(
-            support_5m,
-            2
-        )
-
-        item["resistance_5m"] = round(
-            resistance_5m,
-            2
-        )
-
-        # 5M confirmation
-
-        if item["direction"] == "UP":
-
-            if bullish:
-                item["score"] += 10
-                item["confirmation"] = (
-                    "5M bullish confirmation"
-                )
-            else:
-                item["confirmation"] = (
-                    "5M confirmation pending"
-                )
-
-        elif item["direction"] == "DOWN":
-
-            if bearish:
-                item["score"] += 10
-                item["confirmation"] = (
-                    "5M bearish confirmation"
-                )
-            else:
-                item["confirmation"] = (
-                    "5M confirmation pending"
-                )
-
-        return item
 
     except Exception:
+        return candidates
 
-        item["confirmation"] = (
-            "5M data unavailable"
-        )
+    final = []
 
-        return item
+    for item in candidates:
+
+        try:
+
+            ticker = item["symbol"] + ".NS"
+
+            if isinstance(data.columns, pd.MultiIndex):
+
+                if ticker not in data.columns.get_level_values(0):
+                    continue
+
+                df = data[ticker].copy()
+
+            else:
+                df = data.copy()
+
+            if df.empty:
+                continue
+
+            df = df.dropna(subset=["Open", "High", "Low", "Close", "Volume"])
+
+            if len(df) < 20:
+                continue
+
+            last = df.iloc[-1]
+
+            price = float(last["Close"])
+            open_price = float(last["Open"])
+            volume = float(last["Volume"])
+
+            avg_volume = float(df["Volume"].tail(21).iloc[:-1].mean())
+
+            volume_ratio = (
+                volume / avg_volume
+                if avg_volume > 0
+                else 1
+            )
+
+            recent = df.tail(30)
+
+            support = float(recent["Low"].min())
+            resistance = float(recent["High"].max())
+
+            bullish = price > open_price
+            bearish = price < open_price
+
+            near_support = abs(price - support) / price <= 0.004
+            near_resistance = abs(price - resistance) / price <= 0.004
+
+            confirmation = 0
+
+            if volume_ratio >= 1.5:
+                confirmation += 20
+
+            if item["setup"] == "BREAKOUT" and bullish:
+                confirmation += 20
+
+            if item["setup"] == "BREAKDOWN" and bearish:
+                confirmation += 20
+
+            if near_support and bullish:
+                confirmation += 15
+
+            if near_resistance and bearish:
+                confirmation += 15
+
+            item["price_5m"] = round(price, 2)
+            item["support_5m"] = round(support, 2)
+            item["resistance_5m"] = round(resistance, 2)
+            item["volume_ratio_5m"] = round(volume_ratio, 2)
+            item["confirmation"] = confirmation
+
+            item["total_score"] = item["score"] + confirmation
+
+            final.append(item)
+
+        except Exception:
+            continue
+
+    final.sort(
+        key=lambda x: x.get("total_score", 0),
+        reverse=True
+    )
+
+    return final[:FINAL_SIZE]
 
 
-# =========================================================
-# NEXT DAY SCANNER
-# =========================================================
+# =========================
+# BACKGROUND SCANNER
+# =========================
+def run_scan():
 
-@app.route("/api/scan")
-def scan_market():
+    global SCAN
 
     try:
+
+        SCAN["status"] = "scanning"
+        SCAN["message"] = "Scanning NSE stocks..."
+        SCAN["results"] = []
 
         symbols = get_nse_symbols()
 
         if not symbols:
+            SCAN["status"] = "error"
+            SCAN["message"] = "NSE stock list could not be loaded"
+            return
 
-            return jsonify({
-                "status": "error",
-                "message": (
-                    "NSE stock list could not be loaded"
-                )
-            }), 500
+        all_candidates = []
 
-        # -------------------------------------------------
-        # DAILY SCAN
-        # -------------------------------------------------
+        # Batch scan
+        for start in range(0, len(symbols), BATCH_SIZE):
 
-        candidates = []
+            batch = symbols[start:start + BATCH_SIZE]
 
-        # Parallel scan
-        with ThreadPoolExecutor(
-            max_workers=8
-        ) as executor:
+            data = download_daily(batch)
 
-            futures = {
-                executor.submit(
-                    analyze_daily,
-                    symbol
-                ): symbol
-                for symbol in symbols
-            }
+            if data.empty:
+                continue
 
-            for future in as_completed(
-                futures
-            ):
+            for symbol in batch:
 
-                result = future.result()
+                result = analyze_stock(symbol, data)
 
-                if result is not None:
+                if result:
+                    all_candidates.append(result)
 
-                    candidates.append(
-                        result
-                    )
+            # Small pause to reduce rate limiting
+            time.sleep(1)
 
-        # -------------------------------------------------
-        # FIRST FILTER
-        # -------------------------------------------------
-
-        candidates.sort(
+        # Strongest daily candidates
+        all_candidates.sort(
             key=lambda x: x["score"],
             reverse=True
         )
 
-        # Top 20 get 5M confirmation
-        shortlist = candidates[:20]
+        shortlist = all_candidates[:SHORTLIST_SIZE]
 
-        confirmed = []
-
-        with ThreadPoolExecutor(
-            max_workers=5
-        ) as executor:
-
-            futures = [
-                executor.submit(
-                    confirm_5m,
-                    item
-                )
-                for item in shortlist
-            ]
-
-            for future in as_completed(
-                futures
-            ):
-
-                try:
-
-                    confirmed.append(
-                        future.result()
-                    )
-
-                except Exception:
-                    pass
-
-        # -------------------------------------------------
-        # FINAL SORT
-        # -------------------------------------------------
-
-        confirmed.sort(
-            key=lambda x: x["score"],
-            reverse=True
+        SCAN["message"] = (
+            f"Daily scan complete. "
+            f"{len(shortlist)} candidates found. "
+            f"Checking 5M..."
         )
 
-        # Only strong final setups
-        final = [
-            item
-            for item in confirmed
-            if item["score"] >= 60
-        ]
+        final = confirm_5m(shortlist)
 
-        # Maximum 5 stocks
-        final = final[:5]
-
-        return jsonify({
-
-            "status": "success",
-
-            "market": "NSE",
-
-            "universe_scanned": len(
-                symbols
-            ),
-
-            "technical_candidates": len(
-                candidates
-            ),
-
-            "final_count": len(
-                final
-            ),
-
-            "message": (
-                "Next-session movement "
-                "candidates generated"
-            ),
-
-            "stocks": final
-
-        })
+        SCAN["results"] = final
+        SCAN["status"] = "complete"
+        SCAN["message"] = (
+            f"Scan complete. "
+            f"{len(final)} strong stocks found."
+        )
+        SCAN["updated"] = time.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
     except Exception as e:
 
+        SCAN["status"] = "error"
+        SCAN["message"] = str(e)
+
+
+# =========================
+# HOME
+# =========================
+@app.route("/")
+def home():
+
+    return jsonify({
+        "status": "success",
+        "message": "Mahid Scanner is running",
+        "scan_api": "/api/scan"
+    })
+
+
+# =========================
+# START / CHECK SCAN
+# =========================
+@app.route("/api/scan")
+def scan():
+
+    global SCAN
+
+    if SCAN["status"] == "scanning":
+
         return jsonify({
+            "status": "scanning",
+            "message": SCAN["message"],
+            "results": SCAN["results"]
+        })
 
-            "status": "error",
+    # Start new scan
+    thread = threading.Thread(
+        target=run_scan,
+        daemon=True
+    )
 
-            "message": str(e)
+    thread.start()
 
-        }), 500
+    return jsonify({
+        "status": "scanning",
+        "message": "NSE scan started. Please check again shortly.",
+        "results": []
+    })
 
 
-# =========================================================
-# EXISTING SINGLE STOCK API
-# =========================================================
+# =========================
+# STATUS
+# =========================
+@app.route("/api/scan/status")
+def scan_status():
 
+    return jsonify({
+        "status": SCAN["status"],
+        "message": SCAN["message"],
+        "results": SCAN["results"],
+        "updated": SCAN["updated"]
+    })
+
+
+# =========================
+# SINGLE STOCK
+# =========================
 @app.route("/api/stock/<symbol>")
 def stock(symbol):
 
@@ -816,412 +525,42 @@ def stock(symbol):
 
         symbol = symbol.upper().strip()
 
-        ticker = yf.Ticker(
-            symbol + ".NS"
-        )
+        ticker = yf.Ticker(symbol + ".NS")
 
-        # 5 MINUTE DATA
-
-        data_5m = ticker.history(
+        data = ticker.history(
             period="5d",
             interval="5m"
         )
 
-        if data_5m.empty:
-
+        if data.empty:
             return jsonify({
                 "status": "error",
-                "symbol": symbol,
-                "message": (
-                    "5 minute data not available"
-                )
+                "message": "Data not available"
             })
 
-        data_5m = data_5m.dropna(
-            subset=[
-                "Open",
-                "High",
-                "Low",
-                "Close"
-            ]
+        data = data.dropna(
+            subset=["Open", "High", "Low", "Close"]
         )
 
-        last = data_5m.iloc[-1]
+        last = data.iloc[-1]
 
-        price = float(
-            last["Close"]
-        )
-
-        candle_open = float(
-            last["Open"]
-        )
-
-        volume = int(
-            last["Volume"]
-        )
-
-        recent_5m = data_5m.tail(30)
-
-        intraday_high = float(
-            recent_5m["High"].max()
-        )
-
-        intraday_low = float(
-            recent_5m["Low"].min()
-        )
-
-        range_5m = (
-            intraday_high
-            - intraday_low
-        )
-
-        if range_5m <= 0:
-
-            range_5m = max(
-                price * 0.01,
-                0.01
-            )
-
-        support_5m = (
-            intraday_low
-            + range_5m * 0.25
-        )
-
-        resistance_5m = (
-            intraday_low
-            + range_5m * 0.75
-        )
-
-        midpoint_5m = (
-            intraday_low
-            + range_5m * 0.50
-        )
-
-        # DAILY DATA
-
-        data_day = ticker.history(
-            period="3mo",
-            interval="1d"
-        )
-
-        if not data_day.empty:
-
-            data_day = data_day.dropna(
-                subset=[
-                    "High",
-                    "Low",
-                    "Close"
-                ]
-            )
-
-            recent_day = data_day.tail(20)
-
-            day_high = float(
-                recent_day["High"].max()
-            )
-
-            day_low = float(
-                recent_day["Low"].min()
-            )
-
-            day_range = (
-                day_high
-                - day_low
-            )
-
-            if day_range <= 0:
-
-                day_range = max(
-                    price * 0.05,
-                    0.01
-                )
-
-            major_support = (
-                day_low
-                + day_range * 0.25
-            )
-
-            major_resistance = (
-                day_low
-                + day_range * 0.75
-            )
-
-        else:
-
-            major_support = support_5m
-            major_resistance = resistance_5m
-
-        # VOLUME
-
-        volume_data = (
-            data_5m["Volume"]
-            .tail(21)
-            .iloc[:-1]
-        )
-
-        average_volume = float(
-            volume_data.mean()
-        )
-
-        if average_volume > 0:
-
-            volume_ratio = (
-                volume
-                / average_volume
-            )
-
-        else:
-
-            volume_ratio = 1.0
-
-        strong_volume = (
-            volume_ratio >= 1.5
-        )
-
-        # CANDLE
-
-        candle_close = float(
-            last["Close"]
-        )
-
-        bullish_candle = (
-            candle_close
-            > candle_open
-        )
-
-        bearish_candle = (
-            candle_close
-            < candle_open
-        )
-
-        # ZONE
-
-        if price < midpoint_5m:
-
-            zone = "Discount Zone"
-
-        elif price > midpoint_5m:
-
-            zone = "Premium Zone"
-
-        else:
-
-            zone = "Equilibrium"
-
-        support_distance = (
-            abs(
-                price - support_5m
-            ) / price
-        )
-
-        resistance_distance = (
-            abs(
-                price - resistance_5m
-            ) / price
-        )
-
-        near_support = (
-            support_distance <= 0.003
-        )
-
-        near_resistance = (
-            resistance_distance <= 0.003
-        )
-
-        signal = "WAIT"
-
-        signal_reason = (
-            "No confirmed setup"
-        )
-
-        if (
-
-            zone == "Discount Zone"
-
-            and near_support
-
-            and bullish_candle
-
-            and strong_volume
-
-        ):
-
-            signal = "BUY AREA"
-
-            signal_reason = (
-                "Discount zone + "
-                "5M support + "
-                "bullish candle + "
-                "strong volume"
-            )
-
-        elif (
-
-            zone == "Premium Zone"
-
-            and near_resistance
-
-            and bearish_candle
-
-            and strong_volume
-
-        ):
-
-            signal = "SELL AREA"
-
-            signal_reason = (
-                "Premium zone + "
-                "5M resistance + "
-                "bearish candle + "
-                "strong volume"
-            )
-
-        previous_data = ticker.history(
-            period="5d",
-            interval="1d"
-        )
-
-        previous_close = None
-
-        if len(previous_data) >= 2:
-
-            previous_close = float(
-                previous_data[
-                    "Close"
-                ].iloc[-2]
-            )
-
-        change = None
-        change_percent = None
-
-        if previous_close is not None:
-
-            change = (
-                price
-                - previous_close
-            )
-
-            change_percent = (
-                change
-                / previous_close
-            ) * 100
+        price = float(last["Close"])
 
         return jsonify({
-
             "status": "success",
-
             "symbol": symbol,
-
-            "exchange": "NSE",
-
-            "price": round(
-                price,
-                2
-            ),
-
-            "previous_close":
-                round(
-                    previous_close,
-                    2
-                )
-                if previous_close is not None
-                else None,
-
-            "support_5m":
-                round(
-                    support_5m,
-                    2
-                ),
-
-            "resistance_5m":
-                round(
-                    resistance_5m,
-                    2
-                ),
-
-            "major_support":
-                round(
-                    major_support,
-                    2
-                ),
-
-            "major_resistance":
-                round(
-                    major_resistance,
-                    2
-                ),
-
-            "volume":
-                volume,
-
-            "average_volume":
-                round(
-                    average_volume,
-                    0
-                ),
-
-            "volume_ratio":
-                round(
-                    volume_ratio,
-                    2
-                ),
-
-            "zone":
-                zone,
-
-            "candle":
+            "price": round(price, 2),
+            "candle": (
                 "BULLISH"
-                if bullish_candle
-                else
-                "BEARISH"
-                if bearish_candle
-                else
-                "NEUTRAL",
-
-            "signal":
-                signal,
-
-            "signal_reason":
-                signal_reason,
-
-            "change":
-                round(
-                    change,
-                    2
-                )
-                if change is not None
-                else None,
-
-            "change_percent":
-                round(
-                    change_percent,
-                    2
-                )
-                if change_percent is not None
-                else None
-
+                if last["Close"] > last["Open"]
+                else "BEARISH"
+            )
         })
 
     except Exception as e:
 
         return jsonify({
-
             "status": "error",
-
             "symbol": symbol,
-
             "message": str(e)
-
         }), 500
-
-
-# =========================================================
-# RUN
-# =========================================================
-
-if __name__ == "__main__":
-
-    app.run(
-        host="0.0.0.0",
-        port=5000
-    )
