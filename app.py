@@ -14,15 +14,23 @@ CORS(app)
 # SETTINGS
 # =========================================================
 
-# Free Render ko overload na karne ke liye controlled scan
 DAILY_BATCH_SIZE = 100
-SHORTLIST_SIZE = 20
+SHORTLIST_SIZE = 30
 FINAL_SIZE = 5
 
-# Scan timeout protection
 MAX_SCAN_SECONDS = 240
 
-# Global scan state
+# Fresh setup filters
+MAX_5D_MOVE = 5.0
+MAX_1D_MOVE = 3.0
+
+# How close price should be to resistance/support
+LEVEL_DISTANCE = 0.012
+TIGHT_LEVEL_DISTANCE = 0.006
+
+# Avoid stocks which already made a large breakout candle
+MAX_CANDLE_BODY_ATR = 1.25
+
 SCAN = {
     "status": "idle",
     "message": "Scanner ready",
@@ -99,7 +107,6 @@ def get_nse_symbols():
     except Exception as e:
 
         print("NSE LIST ERROR:", e)
-
         return []
 
 
@@ -135,12 +142,11 @@ def download_daily(symbols):
     except Exception as e:
 
         print("DAILY DOWNLOAD ERROR:", e)
-
         return pd.DataFrame()
 
 
 # =========================================================
-# GET SYMBOL DATA FROM DOWNLOAD
+# GET SYMBOL DATA
 # =========================================================
 
 def get_symbol_df(data, symbol):
@@ -196,7 +202,6 @@ def get_symbol_df(data, symbol):
     except Exception as e:
 
         print("DATA ERROR", symbol, e)
-
         return None
 
 
@@ -219,6 +224,7 @@ def analyze_stock(symbol, data):
         close = df["Close"].astype(float)
         high = df["High"].astype(float)
         low = df["Low"].astype(float)
+        open_price = df["Open"].astype(float)
         volume = df["Volume"].astype(float)
 
         price = float(close.iloc[-1])
@@ -226,9 +232,41 @@ def analyze_stock(symbol, data):
         if price <= 0:
             return None
 
-        # -------------------------------------------------
+        # =================================================
+        # CURRENT DAY MOVE
+        # =================================================
+
+        today_open = float(
+            open_price.iloc[-1]
+        )
+
+        day_change = (
+            (price / today_open) - 1
+        ) * 100
+
+        # =================================================
+        # 5 DAY MOVE
+        # =================================================
+
+        change_5d = (
+            price /
+            float(close.iloc[-6]) -
+            1
+        ) * 100
+
+        # =================================================
+        # TOO MUCH MOVE FILTER
+        # =================================================
+
+        if abs(change_5d) > MAX_5D_MOVE:
+            return None
+
+        if abs(day_change) > MAX_1D_MOVE:
+            return None
+
+        # =================================================
         # EMA
-        # -------------------------------------------------
+        # =================================================
 
         ema20 = float(
             close.ewm(
@@ -244,9 +282,9 @@ def analyze_stock(symbol, data):
             ).mean().iloc[-1]
         )
 
-        # -------------------------------------------------
+        # =================================================
         # VOLUME
-        # -------------------------------------------------
+        # =================================================
 
         previous_volume = volume.iloc[-21:-1]
 
@@ -261,13 +299,13 @@ def analyze_stock(symbol, data):
             return None
 
         volume_ratio = (
-            float(volume.iloc[-1])
-            / avg_volume
+            float(volume.iloc[-1]) /
+            avg_volume
         )
 
-        # -------------------------------------------------
+        # =================================================
         # SUPPORT / RESISTANCE
-        # -------------------------------------------------
+        # =================================================
 
         previous_high = float(
             high.iloc[-21:-1].max()
@@ -277,15 +315,22 @@ def analyze_stock(symbol, data):
             low.iloc[-21:-1].min()
         )
 
-        # -------------------------------------------------
+        # =================================================
         # ATR
-        # -------------------------------------------------
+        # =================================================
 
         previous_close = close.shift(1)
 
         tr1 = high - low
-        tr2 = (high - previous_close).abs()
-        tr3 = (low - previous_close).abs()
+        tr2 = (
+            high -
+            previous_close
+        ).abs()
+
+        tr3 = (
+            low -
+            previous_close
+        ).abs()
 
         tr = pd.concat(
             [tr1, tr2, tr3],
@@ -303,49 +348,99 @@ def analyze_stock(symbol, data):
             atr / price
         ) * 100
 
-        # -------------------------------------------------
-        # 5 DAY MOMENTUM
-        # -------------------------------------------------
+        # =================================================
+        # CURRENT CANDLE
+        # =================================================
 
-        if len(close) < 6:
-            return None
+        o = float(
+            open_price.iloc[-1]
+        )
 
-        change_5d = (
-            price / float(close.iloc[-6]) - 1
-        ) * 100
+        h = float(
+            high.iloc[-1]
+        )
 
-        # -------------------------------------------------
-        # CANDLE
-        # -------------------------------------------------
+        l = float(
+            low.iloc[-1]
+        )
 
-        o = float(df["Open"].iloc[-1])
-        h = float(df["High"].iloc[-1])
-        l = float(df["Low"].iloc[-1])
-        c = float(df["Close"].iloc[-1])
+        c = float(
+            close.iloc[-1]
+        )
 
         bullish = c > o
         bearish = c < o
 
-        body = abs(c - o)
         candle_range = max(
             h - l,
             0.01
         )
 
-        strong_candle = (
-            body / candle_range
-        ) >= 0.50
+        body = abs(c - o)
 
-        # -------------------------------------------------
-        # BREAKOUT / BREAKDOWN
-        # -------------------------------------------------
+        body_ratio = (
+            body /
+            candle_range
+        )
 
-        breakout = price > previous_high
-        breakdown = price < previous_low
+        # =================================================
+        # ALREADY BREAKOUT?
+        # =================================================
 
-        # -------------------------------------------------
+        already_breakout = (
+            price >
+            previous_high
+        )
+
+        already_breakdown = (
+            price <
+            previous_low
+        )
+
+        # =================================================
+        # LEVEL DISTANCE
+        # =================================================
+
+        resistance_distance = (
+            previous_high - price
+        ) / price
+
+        support_distance = (
+            price - previous_low
+        ) / price
+
+        near_resistance = (
+            0 <= resistance_distance
+            <= LEVEL_DISTANCE
+        )
+
+        very_near_resistance = (
+            0 <= resistance_distance
+            <= TIGHT_LEVEL_DISTANCE
+        )
+
+        near_support = (
+            0 <= support_distance
+            <= LEVEL_DISTANCE
+        )
+
+        # =================================================
+        # REJECT ALREADY MOVED STOCK
+        # =================================================
+
+        if already_breakout:
+            return None
+
+        if already_breakdown:
+            return None
+
+        # Huge candle = move may already be happening
+        if body > atr * MAX_CANDLE_BODY_ATR:
+            return None
+
+        # =================================================
         # SCORE
-        # -------------------------------------------------
+        # =================================================
 
         score = 0
 
@@ -353,94 +448,167 @@ def analyze_stock(symbol, data):
 
         setup = "WATCH"
 
-        # Trend
-        if price > ema20:
+        # -------------------------------------------------
+        # TREND
+        # -------------------------------------------------
 
-            score += 10
-            reasons.append(
-                "Above EMA20"
-            )
+        if price > ema20:
+            score += 8
+            reasons.append("Above EMA20")
 
         if ema20 > ema50:
+            score += 8
+            reasons.append("EMA20 > EMA50")
+
+        # -------------------------------------------------
+        # FRESH MOMENTUM
+        # -------------------------------------------------
+
+        if 0.5 <= change_5d <= 3.0:
 
             score += 10
             reasons.append(
-                "EMA20 > EMA50"
+                "Fresh bullish momentum"
             )
 
-        # Volume
-        if volume_ratio >= 1.5:
+        elif -3.0 <= change_5d <= -0.5:
 
-            score += 15
+            score += 10
             reasons.append(
-                "Strong volume"
+                "Fresh bearish momentum"
             )
 
-        elif volume_ratio >= 1.2:
+        # -------------------------------------------------
+        # VOLUME BUILDUP
+        # -------------------------------------------------
+
+        if 1.15 <= volume_ratio < 2.0:
+
+            score += 12
+            reasons.append(
+                "Volume buildup"
+            )
+
+        elif 1.0 <= volume_ratio < 1.15:
+
+            score += 5
+
+        elif volume_ratio >= 2.5:
+
+            # Huge volume can mean move already started
+            score -= 8
+            reasons.append(
+                "Late volume spike"
+            )
+
+        # -------------------------------------------------
+        # VOLATILITY
+        # -------------------------------------------------
+
+        if 1.0 <= atr_percent <= 4.0:
 
             score += 8
-
-        # Volatility
-        if atr_percent >= 1.5:
-
-            score += 10
             reasons.append(
                 "Good volatility"
             )
 
-        elif atr_percent >= 1.0:
-
-            score += 5
-
-        # Momentum
-        if abs(change_5d) >= 2:
-
-            score += 10
-            reasons.append(
-                "Momentum"
-            )
-
-        # Breakout
-        if breakout:
-
-            score += 25
-            setup = "BREAKOUT"
-
-            reasons.append(
-                "20D breakout"
-            )
-
-        elif breakdown:
-
-            score += 25
-            setup = "BREAKDOWN"
-
-            reasons.append(
-                "20D breakdown"
-            )
-
-        # Candle
-        if strong_candle:
-
-            score += 10
-
-            if bullish:
-
-                reasons.append(
-                    "Strong bullish candle"
-                )
-
-            elif bearish:
-
-                reasons.append(
-                    "Strong bearish candle"
-                )
-
         # -------------------------------------------------
-        # Minimum score
+        # PRE-BREAKOUT
         # -------------------------------------------------
 
-        if score < 50:
+        if near_resistance:
+
+            score += 20
+            setup = "PRE-BREAKOUT"
+
+            reasons.append(
+                "Near resistance"
+            )
+
+        if very_near_resistance:
+
+            score += 8
+            reasons.append(
+                "Resistance pressure"
+            )
+
+        # -------------------------------------------------
+        # SUPPORT REVERSAL
+        # -------------------------------------------------
+
+        if near_support and bullish:
+
+            score += 20
+            setup = "SUPPORT REVERSAL"
+
+            reasons.append(
+                "Support reversal"
+            )
+
+        # -------------------------------------------------
+        # CANDLE
+        # -------------------------------------------------
+
+        if bullish:
+
+            upper_wick = h - c
+            lower_wick = o - l
+
+            if (
+                lower_wick > body
+                and
+                lower_wick > upper_wick
+            ):
+
+                score += 8
+
+                if setup == "WATCH":
+                    setup = "SUPPORT REVERSAL"
+
+                reasons.append(
+                    "Bullish rejection"
+                )
+
+        elif bearish:
+
+            upper_wick = h - o
+            lower_wick = c - l
+
+            if (
+                upper_wick > body
+                and
+                upper_wick > lower_wick
+            ):
+
+                score += 8
+
+                if setup == "WATCH":
+                    setup = "RESISTANCE REJECTION"
+
+                reasons.append(
+                    "Bearish rejection"
+                )
+
+        # =================================================
+        # IMPORTANT:
+        # DO NOT REWARD ALREADY-BROKEN LEVEL
+        # =================================================
+
+        # No breakout points here.
+        # This is intentional.
+
+        # =================================================
+        # FINAL FILTER
+        # =================================================
+
+        if score < 38:
+            return None
+
+        # Need either a level setup or meaningful volume
+        if (
+            setup == "WATCH"
+            and volume_ratio < 1.15
+        ):
             return None
 
         return {
@@ -452,12 +620,19 @@ def analyze_stock(symbol, data):
                 2
             ),
 
-            "score": int(score),
+            "score": int(
+                max(score, 0)
+            ),
 
             "setup": setup,
 
             "change_5d": round(
                 change_5d,
+                2
+            ),
+
+            "day_change": round(
+                day_change,
                 2
             ),
 
@@ -488,6 +663,16 @@ def analyze_stock(symbol, data):
 
             "resistance": round(
                 previous_high,
+                2
+            ),
+
+            "distance_resistance": round(
+                resistance_distance * 100,
+                2
+            ),
+
+            "distance_support": round(
+                support_distance * 100,
                 2
             ),
 
@@ -554,7 +739,6 @@ def confirm_5m(candidates):
             e
         )
 
-        # Daily candidates still returned
         return candidates[:FINAL_SIZE]
 
     final = []
@@ -573,7 +757,7 @@ def confirm_5m(candidates):
             if df is None:
                 continue
 
-            if len(df) < 20:
+            if len(df) < 30:
                 continue
 
             last = df.iloc[-1]
@@ -586,9 +770,21 @@ def confirm_5m(candidates):
                 last["Open"]
             )
 
+            high = float(
+                last["High"]
+            )
+
+            low = float(
+                last["Low"]
+            )
+
             volume = float(
                 last["Volume"]
             )
+
+            # =================================================
+            # 5M AVERAGE VOLUME
+            # =================================================
 
             previous_volume = (
                 df["Volume"]
@@ -609,7 +805,11 @@ def confirm_5m(candidates):
 
             else:
 
-                volume_ratio = 1
+                volume_ratio = 1.0
+
+            # =================================================
+            # 5M LEVELS
+            # =================================================
 
             recent = df.tail(30)
 
@@ -621,61 +821,175 @@ def confirm_5m(candidates):
                 recent["High"].max()
             )
 
+            # Previous 5M high excluding current candle
+            previous_5m_high = float(
+                df["High"]
+                .tail(21)
+                .iloc[:-1]
+                .max()
+            )
+
+            previous_5m_low = float(
+                df["Low"]
+                .tail(21)
+                .iloc[:-1]
+                .min()
+            )
+
             bullish = (
-                price > open_price
+                price >
+                open_price
             )
 
             bearish = (
-                price < open_price
+                price <
+                open_price
+            )
+
+            # =================================================
+            # 5M DISTANCE
+            # =================================================
+
+            resistance_distance = (
+                previous_5m_high -
+                price
+            ) / price
+
+            support_distance = (
+                price -
+                previous_5m_low
+            ) / price
+
+            near_resistance = (
+                0 <=
+                resistance_distance
+                <= 0.006
             )
 
             near_support = (
-                abs(price - support)
-                / price
-                <= 0.004
+                0 <=
+                support_distance
+                <= 0.006
             )
 
-            near_resistance = (
-                abs(price - resistance)
-                / price
-                <= 0.004
+            # =================================================
+            # DO NOT CONFIRM IF ALREADY BROKEN
+            # =================================================
+
+            already_5m_breakout = (
+                price >
+                previous_5m_high
             )
+
+            already_5m_breakdown = (
+                price <
+                previous_5m_low
+            )
+
+            if already_5m_breakout:
+                continue
+
+            if already_5m_breakdown:
+                continue
+
+            # =================================================
+            # 5M CANDLE
+            # =================================================
+
+            candle_range = max(
+                high - low,
+                0.01
+            )
+
+            body = abs(
+                price -
+                open_price
+            )
+
+            # Reject huge candle
+            if (
+                body /
+                candle_range
+            ) > 0.75:
+                continue
+
+            # =================================================
+            # CONFIRMATION
+            # =================================================
 
             confirmation = 0
+            confirmation_reasons = []
 
-            if volume_ratio >= 1.5:
+            # Volume buildup
+            if 1.15 <= volume_ratio < 2.5:
 
                 confirmation += 20
 
+                confirmation_reasons.append(
+                    "5M volume buildup"
+                )
+
+            # Pre-breakout pressure
             if (
-                item["setup"]
-                == "BREAKOUT"
-                and bullish
+                item["setup"] ==
+                "PRE-BREAKOUT"
+                and
+                near_resistance
+                and
+                bullish
             ):
 
-                confirmation += 20
+                confirmation += 25
 
+                confirmation_reasons.append(
+                    "5M breakout pressure"
+                )
+
+            # Support reversal
             if (
-                item["setup"]
-                == "BREAKDOWN"
-                and bearish
-            ):
-
-                confirmation += 20
-
-            if (
+                item["setup"] ==
+                "SUPPORT REVERSAL"
+                and
                 near_support
-                and bullish
+                and
+                bullish
             ):
 
-                confirmation += 15
+                confirmation += 25
 
+                confirmation_reasons.append(
+                    "5M support reaction"
+                )
+
+            # Resistance rejection
             if (
                 near_resistance
-                and bearish
+                and
+                bearish
             ):
 
                 confirmation += 15
+
+                confirmation_reasons.append(
+                    "5M resistance rejection"
+                )
+
+            # Price close to resistance
+            if near_resistance:
+
+                confirmation += 10
+
+            # Price close to support
+            if near_support:
+
+                confirmation += 10
+
+            # =================================================
+            # MINIMUM CONFIRMATION
+            # =================================================
+
+            if confirmation < 15:
+                continue
 
             item["price_5m"] = round(
                 price,
@@ -702,9 +1016,19 @@ def confirm_5m(candidates):
             )
 
             item["total_score"] = int(
-                item["score"]
-                + confirmation
+                item["score"] +
+                confirmation
             )
+
+            if confirmation_reasons:
+
+                item["reason"] = (
+                    item["reason"] +
+                    ", " +
+                    ", ".join(
+                        confirmation_reasons[:2]
+                    )
+                )
 
             final.append(item)
 
@@ -745,17 +1069,22 @@ def run_scan():
         with SCAN_LOCK:
 
             SCAN["status"] = "scanning"
+
             SCAN["message"] = (
                 "Loading NSE stock list..."
             )
+
             SCAN["results"] = []
+
             SCAN["updated"] = None
+
             SCAN["progress"] = 0
+
             SCAN["total"] = 0
 
-        # -------------------------------------------------
+        # =================================================
         # NSE SYMBOLS
-        # -------------------------------------------------
+        # =================================================
 
         symbols = get_nse_symbols()
 
@@ -776,9 +1105,9 @@ def run_scan():
             len(symbols)
         )
 
-        # -------------------------------------------------
+        # =================================================
         # DAILY SCAN
-        # -------------------------------------------------
+        # =================================================
 
         candidates = []
 
@@ -788,11 +1117,10 @@ def run_scan():
             DAILY_BATCH_SIZE
         ):
 
-            # Timeout protection
             if (
-                time.time()
-                - start_time
-                > MAX_SCAN_SECONDS
+                time.time() -
+                start_time >
+                MAX_SCAN_SECONDS
             ):
 
                 print(
@@ -807,7 +1135,7 @@ def run_scan():
             ]
 
             SCAN["message"] = (
-                f"Scanning daily data "
+                f"Scanning fresh setups "
                 f"{min(start + len(batch), len(symbols))}"
                 f"/{len(symbols)}..."
             )
@@ -846,9 +1174,9 @@ def run_scan():
                         result
                     )
 
-        # -------------------------------------------------
+        # =================================================
         # SORT
-        # -------------------------------------------------
+        # =================================================
 
         candidates.sort(
             key=lambda x:
@@ -861,13 +1189,13 @@ def run_scan():
         ]
 
         print(
-            "DAILY CANDIDATES:",
+            "FRESH DAILY CANDIDATES:",
             len(candidates)
         )
 
-        # -------------------------------------------------
+        # =================================================
         # NO CANDIDATE
-        # -------------------------------------------------
+        # =================================================
 
         if not shortlist:
 
@@ -875,7 +1203,7 @@ def run_scan():
 
             SCAN["message"] = (
                 "Scan complete. "
-                "No strong setup found."
+                "No fresh pre-move setup found."
             )
 
             SCAN["results"] = []
@@ -888,13 +1216,13 @@ def run_scan():
 
             return
 
-        # -------------------------------------------------
-        # 5M
-        # -------------------------------------------------
+        # =================================================
+        # 5M CONFIRMATION
+        # =================================================
 
         SCAN["message"] = (
-            f"{len(shortlist)} daily candidates found. "
-            f"Checking 5M confirmation..."
+            f"{len(shortlist)} fresh setups found. "
+            f"Checking 5M pre-move confirmation..."
         )
 
         print(
@@ -905,12 +1233,9 @@ def run_scan():
             shortlist
         )
 
-        # If 5M fails, don't leave scanner stuck
-        if not final:
-
-            final = shortlist[
-                :FINAL_SIZE
-            ]
+        # IMPORTANT:
+        # Do NOT return unconfirmed daily stocks.
+        # Otherwise old problem can come back.
 
         SCAN["results"] = final
 
@@ -918,7 +1243,7 @@ def run_scan():
 
         SCAN["message"] = (
             f"Scan complete. "
-            f"{len(final)} stocks found."
+            f"{len(final)} fresh setup(s) found."
         )
 
         SCAN["updated"] = (
@@ -941,8 +1266,8 @@ def run_scan():
         SCAN["status"] = "error"
 
         SCAN["message"] = (
-            "Scanner error: "
-            + str(e)
+            "Scanner error: " +
+            str(e)
         )
 
 
@@ -955,7 +1280,8 @@ def home():
 
     return jsonify({
 
-        "status": "success",
+        "status":
+            "success",
 
         "message":
             "Mahid Scanner is running",
@@ -977,12 +1303,12 @@ def scan():
 
     global SCAN
 
-    # Already running
     if SCAN["status"] == "scanning":
 
         return jsonify({
 
-            "status": "scanning",
+            "status":
+                "scanning",
 
             "message":
                 SCAN["message"],
@@ -997,7 +1323,6 @@ def scan():
                 SCAN["total"]
         })
 
-    # Start scanner
     thread = threading.Thread(
         target=run_scan,
         daemon=True
@@ -1007,10 +1332,11 @@ def scan():
 
     return jsonify({
 
-        "status": "scanning",
+        "status":
+            "scanning",
 
         "message":
-            "NSE scan started. "
+            "Fresh setup scan started. "
             "Check status shortly.",
 
         "results": [],
@@ -1111,11 +1437,17 @@ def stock(symbol):
             last["Close"]
         )
 
-        if last["Close"] > last["Open"]:
+        if (
+            last["Close"] >
+            last["Open"]
+        ):
 
             candle = "BULLISH"
 
-        elif last["Close"] < last["Open"]:
+        elif (
+            last["Close"] <
+            last["Open"]
+        ):
 
             candle = "BEARISH"
 
@@ -1132,7 +1464,10 @@ def stock(symbol):
                 symbol,
 
             "price":
-                round(price, 2),
+                round(
+                    price,
+                    2
+                ),
 
             "candle":
                 candle
